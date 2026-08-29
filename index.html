@@ -170,7 +170,7 @@ body{
   background:#fffaf2;border:2px solid #eee5d5;border-radius:18px;padding:14px
 }
 .level{font-size:20px;font-weight:800;text-align:center;margin-bottom:8px}
-.counter{text-align:center;font-size:18px;font-weight:700}
+.counter{display:none;text-align:center;font-size:18px;font-weight:700}
 .rules-title{font-size:15px;font-weight:800;text-align:center;margin-bottom:10px}
 .rules{display:grid;gap:10px;font-size:12px;line-height:1.35;color:#687261}
 .rule{display:grid;grid-template-columns:26px 1fr;gap:7px;align-items:start}
@@ -250,7 +250,33 @@ button.hint{
 </style>
 </head>
 <body>
+<div class="app">
+  <div class="topbar">
+    <div class="lives">
+      <span>ЖИЗНИ</span>
+      <div class="hearts" id="hearts" aria-label="3 жизни"></div>
+    </div>
+    <div class="help">1 клик — ✕ &nbsp;&nbsp; быстрый двойной клик — 🌷</div>
+  </div>
 
+  <div class="layout">
+    <section class="board-shell">
+      <div class="board" id="board"></div>
+      <div class="win" id="win">Клумба готова 🌷</div>
+      <div class="gameover" id="gameover">Жизни закончились 💔 Нажми «Сброс».</div>
+      <div class="message" aria-live="polite">
+        <div class="mission-line">
+          <span class="mission-label">Найди всех капибар</span>
+          <span class="mission-count"><span id="missionCount">0</span>/<span id="missionTotal">8</span></span>
+        </div>
+        <div class="status-text" id="message"></div>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="card">
+        <div class="level" id="levelLabel">УРОВЕНЬ 1</div>
+        <div class="counter"><span id="count">0</span> / <span id="total">8</span></div>
       </section>
 
       <section class="card rules-card">
@@ -543,7 +569,7 @@ button.hint{
     board.classList.toggle('size-10',N===10);
 
     levelLabel.textContent=level.name;
-    if(totalEl) totalEl.textContent=N;
+    totalEl.textContent=N;
     missionTotalEl.textContent=N;
     missionCountEl.textContent=0;
     win.textContent=levelIndex===levels.length-1
@@ -659,8 +685,8 @@ button.hint{
       }
     }
 
-    if(countEl) countEl.textContent=found.size;
-    if(totalEl) totalEl.textContent=N;
+    countEl.textContent=found.size;
+    totalEl.textContent=N;
     missionCountEl.textContent=found.size;
     missionTotalEl.textContent=N;
     renderLives();
