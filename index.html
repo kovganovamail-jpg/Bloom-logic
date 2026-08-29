@@ -46,10 +46,9 @@ body{
   display:grid;
   grid-template-columns:repeat(8,minmax(0,1fr));
   grid-template-rows:repeat(8,minmax(0,1fr));
-  gap:5px;
-  width:100%;
+  gap:2px;
   aspect-ratio:1/1;
-  min-height:280px;
+  width:100%;
   overflow:hidden;
   position:relative;
 }
@@ -127,10 +126,10 @@ body{
   z-index:-1;
   pointer-events:none;
 }
-.cell.off.join-l::before{left:-5px}
-.cell.off.join-r::before{right:-5px}
-.cell.off.join-u::before{top:-5px}
-.cell.off.join-d::before{bottom:-5px}
+.cell.off.join-l::before{left:-2px}
+.cell.off.join-r::before{right:-2px}
+.cell.off.join-u::before{top:-2px}
+.cell.off.join-d::before{bottom:-2px}
 .cell.off.edge-l{border-radius:7px 0 0 7px}
 .cell.off.edge-r{border-radius:0 7px 7px 0}
 .cell.off.edge-u{border-radius:7px 7px 0 0}
@@ -139,26 +138,69 @@ body{
 .cell.flower,
 .cell.flower:disabled{
   cursor:default;
-  z-index:4;
+  z-index:8;
   border-radius:7px;
   opacity:1 !important;
   filter:none !important;
   -webkit-filter:none !important;
-  color:inherit;
+  overflow:visible;
 }
-.flowerIcon{
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  width:100%;
-  height:100%;
-  font-size:clamp(38px,7.6vw,74px);
-  line-height:1;
-  transform-origin:center;
-  opacity:1 !important;
-  filter:none !important;
-  animation:none
+.capySprite{
+  position:absolute;
+  left:50%;
+  bottom:-5%;
+  width:145%;
+  height:145%;
+  transform:translateX(-50%);
+  z-index:12;
+  pointer-events:none;
+  filter:drop-shadow(0 3px 2px rgba(65,45,25,.18));
 }
+.capyBody{
+  position:absolute;
+  width:64%;height:70%;
+  left:18%;bottom:4%;
+  border-radius:48% 48% 42% 42%;
+  background:linear-gradient(145deg,#d79a54 0%,#bd793d 72%,#a96532 100%);
+  border:1.5px solid rgba(95,53,24,.5);
+}
+.capyHead{
+  position:absolute;
+  width:72%;height:60%;
+  left:14%;top:2%;
+  border-radius:48% 48% 46% 46%;
+  background:linear-gradient(145deg,#dfa25c,#bd793d 76%);
+  border:1.5px solid rgba(95,53,24,.5);
+}
+.capyEar{position:absolute;width:19%;height:19%;top:-5%;border-radius:50%;background:#a96532;border:1.5px solid rgba(95,53,24,.55)}
+.capyEar.e1{left:11%}.capyEar.e2{right:11%}
+.capyEye{position:absolute;width:8%;height:11%;top:37%;border-radius:50%;background:#2d2119}
+.capyEye.e1{left:28%}.capyEye.e2{right:28%}
+.capySnout{
+  position:absolute;width:38%;height:25%;left:31%;top:49%;
+  border-radius:50%;background:#d8a06c;
+}
+.capyNose{
+  position:absolute;width:17%;height:12%;left:41.5%;top:52%;
+  border-radius:48%;background:#654126;
+}
+.capyPaw{position:absolute;width:24%;height:19%;bottom:15%;border-radius:50%;background:#b8733a;z-index:5}
+.capyPaw.p1{left:19%;transform:rotate(18deg)}.capyPaw.p2{right:19%;transform:rotate(-18deg)}
+.capyFlower{
+  position:absolute;
+  width:48%;height:48%;
+  left:45%;bottom:8%;
+  z-index:8;
+}
+.capyFlower .petal{
+  position:absolute;width:42%;height:42%;left:29%;top:29%;
+  border-radius:50%;background:#f58ca6;border:1px solid rgba(176,74,102,.25)
+}
+.capyFlower .p1{transform:translateY(-48%)}.capyFlower .p2{transform:translateX(48%)}
+.capyFlower .p3{transform:translateY(48%)}.capyFlower .p4{transform:translateX(-48%)}
+.capyFlower .center{position:absolute;width:25%;height:25%;left:37.5%;top:37.5%;border-radius:50%;background:#ffd35f;z-index:3}
+.capyFlower .stem{position:absolute;width:7%;height:56%;left:47%;top:58%;background:#4e8d45;border-radius:8px;transform:rotate(8deg);transform-origin:top}
+.board.size-10 .capySprite{width:155%;height:155%}
 .cell.wrongflash{animation:shake .24s linear}
 
 .side{display:flex;flex-direction:column;gap:12px;min-width:0}
@@ -231,20 +273,6 @@ button.hint{
 @media(prefers-reduced-motion:reduce){
   .cell,.flowerIcon{animation:none!important;transition:none!important}
 }
-
-.flowerIcon.just-found{
-  animation:bloom .28s cubic-bezier(.2,.9,.2,1.15);
-}
-
-
-.cell{
-  -webkit-tap-highlight-color:transparent;
-  -webkit-touch-callout:none;
-  -webkit-user-select:none;
-  user-select:none;
-  touch-action:manipulation;
-}
-
 </style>
 </head>
 <body>
@@ -259,7 +287,7 @@ button.hint{
 
   <div class="layout">
     <section class="board-shell">
-      <div class="board size-10" id="board"><button type="button" class="cell" data-r="0" data-c="0" style="background:#d9ad00" aria-label="Строка 1, столбец 1"></button><button type="button" class="cell" data-r="0" data-c="1" style="background:#f3d47a" aria-label="Строка 1, столбец 2"></button><button type="button" class="cell" data-r="0" data-c="2" style="background:#8bd17b" aria-label="Строка 1, столбец 3"></button><button type="button" class="cell" data-r="0" data-c="3" style="background:#8bd17b" aria-label="Строка 1, столбец 4"></button><button type="button" class="cell" data-r="0" data-c="4" style="background:#40a9c1" aria-label="Строка 1, столбец 5"></button><button type="button" class="cell" data-r="0" data-c="5" style="background:#40a9c1" aria-label="Строка 1, столбец 6"></button><button type="button" class="cell" data-r="0" data-c="6" style="background:#40a9c1" aria-label="Строка 1, столбец 7"></button><button type="button" class="cell" data-r="0" data-c="7" style="background:#40a9c1" aria-label="Строка 1, столбец 8"></button><button type="button" class="cell" data-r="0" data-c="8" style="background:#40a9c1" aria-label="Строка 1, столбец 9"></button><button type="button" class="cell" data-r="0" data-c="9" style="background:#cf6a88" aria-label="Строка 1, столбец 10"></button><button type="button" class="cell" data-r="1" data-c="0" style="background:#f3d47a" aria-label="Строка 2, столбец 1"></button><button type="button" class="cell" data-r="1" data-c="1" style="background:#f3d47a" aria-label="Строка 2, столбец 2"></button><button type="button" class="cell" data-r="1" data-c="2" style="background:#f3d47a" aria-label="Строка 2, столбец 3"></button><button type="button" class="cell" data-r="1" data-c="3" style="background:#8bd17b" aria-label="Строка 2, столбец 4"></button><button type="button" class="cell" data-r="1" data-c="4" style="background:#8bd17b" aria-label="Строка 2, столбец 5"></button><button type="button" class="cell" data-r="1" data-c="5" style="background:#40a9c1" aria-label="Строка 2, столбец 6"></button><button type="button" class="cell" data-r="1" data-c="6" style="background:#40a9c1" aria-label="Строка 2, столбец 7"></button><button type="button" class="cell" data-r="1" data-c="7" style="background:#40a9c1" aria-label="Строка 2, столбец 8"></button><button type="button" class="cell" data-r="1" data-c="8" style="background:#40a9c1" aria-label="Строка 2, столбец 9"></button><button type="button" class="cell" data-r="1" data-c="9" style="background:#cf6a88" aria-label="Строка 2, столбец 10"></button><button type="button" class="cell" data-r="2" data-c="0" style="background:#f3d47a" aria-label="Строка 3, столбец 1"></button><button type="button" class="cell" data-r="2" data-c="1" style="background:#f3d47a" aria-label="Строка 3, столбец 2"></button><button type="button" class="cell" data-r="2" data-c="2" style="background:#f3d47a" aria-label="Строка 3, столбец 3"></button><button type="button" class="cell" data-r="2" data-c="3" style="background:#f3d47a" aria-label="Строка 3, столбец 4"></button><button type="button" class="cell" data-r="2" data-c="4" style="background:#8bd17b" aria-label="Строка 3, столбец 5"></button><button type="button" class="cell" data-r="2" data-c="5" style="background:#40a9c1" aria-label="Строка 3, столбец 6"></button><button type="button" class="cell" data-r="2" data-c="6" style="background:#40a9c1" aria-label="Строка 3, столбец 7"></button><button type="button" class="cell" data-r="2" data-c="7" style="background:#40a9c1" aria-label="Строка 3, столбец 8"></button><button type="button" class="cell" data-r="2" data-c="8" style="background:#40a9c1" aria-label="Строка 3, столбец 9"></button><button type="button" class="cell" data-r="2" data-c="9" style="background:#40a9c1" aria-label="Строка 3, столбец 10"></button><button type="button" class="cell" data-r="3" data-c="0" style="background:#f3d47a" aria-label="Строка 4, столбец 1"></button><button type="button" class="cell" data-r="3" data-c="1" style="background:#f3d47a" aria-label="Строка 4, столбец 2"></button><button type="button" class="cell" data-r="3" data-c="2" style="background:#8bd17b" aria-label="Строка 4, столбец 3"></button><button type="button" class="cell" data-r="3" data-c="3" style="background:#8bd17b" aria-label="Строка 4, столбец 4"></button><button type="button" class="cell" data-r="3" data-c="4" style="background:#8bd17b" aria-label="Строка 4, столбец 5"></button><button type="button" class="cell" data-r="3" data-c="5" style="background:#8bd17b" aria-label="Строка 4, столбец 6"></button><button type="button" class="cell" data-r="3" data-c="6" style="background:#8bd17b" aria-label="Строка 4, столбец 7"></button><button type="button" class="cell" data-r="3" data-c="7" style="background:#40a9c1" aria-label="Строка 4, столбец 8"></button><button type="button" class="cell" data-r="3" data-c="8" style="background:#b47650" aria-label="Строка 4, столбец 9"></button><button type="button" class="cell" data-r="3" data-c="9" style="background:#40a9c1" aria-label="Строка 4, столбец 10"></button><button type="button" class="cell" data-r="4" data-c="0" style="background:#f3d47a" aria-label="Строка 5, столбец 1"></button><button type="button" class="cell" data-r="4" data-c="1" style="background:#f3d47a" aria-label="Строка 5, столбец 2"></button><button type="button" class="cell" data-r="4" data-c="2" style="background:#8bd17b" aria-label="Строка 5, столбец 3"></button><button type="button" class="cell" data-r="4" data-c="3" style="background:#8576d3" aria-label="Строка 5, столбец 4"></button><button type="button" class="cell" data-r="4" data-c="4" style="background:#8576d3" aria-label="Строка 5, столбец 5"></button><button type="button" class="cell" data-r="4" data-c="5" style="background:#8576d3" aria-label="Строка 5, столбец 6"></button><button type="button" class="cell" data-r="4" data-c="6" style="background:#8bd17b" aria-label="Строка 5, столбец 7"></button><button type="button" class="cell" data-r="4" data-c="7" style="background:#8bd17b" aria-label="Строка 5, столбец 8"></button><button type="button" class="cell" data-r="4" data-c="8" style="background:#b47650" aria-label="Строка 5, столбец 9"></button><button type="button" class="cell" data-r="4" data-c="9" style="background:#40a9c1" aria-label="Строка 5, столбец 10"></button><button type="button" class="cell" data-r="5" data-c="0" style="background:#f3d47a" aria-label="Строка 6, столбец 1"></button><button type="button" class="cell" data-r="5" data-c="1" style="background:#f3d47a" aria-label="Строка 6, столбец 2"></button><button type="button" class="cell" data-r="5" data-c="2" style="background:#8bd17b" aria-label="Строка 6, столбец 3"></button><button type="button" class="cell" data-r="5" data-c="3" style="background:#8576d3" aria-label="Строка 6, столбец 4"></button><button type="button" class="cell" data-r="5" data-c="4" style="background:#8bd17b" aria-label="Строка 6, столбец 5"></button><button type="button" class="cell" data-r="5" data-c="5" style="background:#8576d3" aria-label="Строка 6, столбец 6"></button><button type="button" class="cell" data-r="5" data-c="6" style="background:#8bd17b" aria-label="Строка 6, столбец 7"></button><button type="button" class="cell" data-r="5" data-c="7" style="background:#b47650" aria-label="Строка 6, столбец 8"></button><button type="button" class="cell" data-r="5" data-c="8" style="background:#b47650" aria-label="Строка 6, столбец 9"></button><button type="button" class="cell" data-r="5" data-c="9" style="background:#b47650" aria-label="Строка 6, столбец 10"></button><button type="button" class="cell" data-r="6" data-c="0" style="background:#f3d47a" aria-label="Строка 7, столбец 1"></button><button type="button" class="cell" data-r="6" data-c="1" style="background:#f3d47a" aria-label="Строка 7, столбец 2"></button><button type="button" class="cell" data-r="6" data-c="2" style="background:#f3d47a" aria-label="Строка 7, столбец 3"></button><button type="button" class="cell" data-r="6" data-c="3" style="background:#8576d3" aria-label="Строка 7, столбец 4"></button><button type="button" class="cell" data-r="6" data-c="4" style="background:#8bd17b" aria-label="Строка 7, столбец 5"></button><button type="button" class="cell" data-r="6" data-c="5" style="background:#8bd17b" aria-label="Строка 7, столбец 6"></button><button type="button" class="cell" data-r="6" data-c="6" style="background:#8bd17b" aria-label="Строка 7, столбец 7"></button><button type="button" class="cell" data-r="6" data-c="7" style="background:#8bd17b" aria-label="Строка 7, столбец 8"></button><button type="button" class="cell" data-r="6" data-c="8" style="background:#b47650" aria-label="Строка 7, столбец 9"></button><button type="button" class="cell" data-r="6" data-c="9" style="background:#b47650" aria-label="Строка 7, столбец 10"></button><button type="button" class="cell" data-r="7" data-c="0" style="background:#eb8ad6" aria-label="Строка 8, столбец 1"></button><button type="button" class="cell" data-r="7" data-c="1" style="background:#eb8ad6" aria-label="Строка 8, столбец 2"></button><button type="button" class="cell" data-r="7" data-c="2" style="background:#f3d47a" aria-label="Строка 8, столбец 3"></button><button type="button" class="cell" data-r="7" data-c="3" style="background:#8bd17b" aria-label="Строка 8, столбец 4"></button><button type="button" class="cell" data-r="7" data-c="4" style="background:#8bd17b" aria-label="Строка 8, столбец 5"></button><button type="button" class="cell" data-r="7" data-c="5" style="background:#8bd17b" aria-label="Строка 8, столбец 6"></button><button type="button" class="cell" data-r="7" data-c="6" style="background:#b47650" aria-label="Строка 8, столбец 7"></button><button type="button" class="cell" data-r="7" data-c="7" style="background:#b47650" aria-label="Строка 8, столбец 8"></button><button type="button" class="cell" data-r="7" data-c="8" style="background:#b47650" aria-label="Строка 8, столбец 9"></button><button type="button" class="cell" data-r="7" data-c="9" style="background:#b47650" aria-label="Строка 8, столбец 10"></button><button type="button" class="cell" data-r="8" data-c="0" style="background:#eb8ad6" aria-label="Строка 9, столбец 1"></button><button type="button" class="cell" data-r="8" data-c="1" style="background:#eb8ad6" aria-label="Строка 9, столбец 2"></button><button type="button" class="cell" data-r="8" data-c="2" style="background:#eb8ad6" aria-label="Строка 9, столбец 3"></button><button type="button" class="cell" data-r="8" data-c="3" style="background:#8bd17b" aria-label="Строка 9, столбец 4"></button><button type="button" class="cell" data-r="8" data-c="4" style="background:#ff985c" aria-label="Строка 9, столбец 5"></button><button type="button" class="cell" data-r="8" data-c="5" style="background:#b47650" aria-label="Строка 9, столбец 6"></button><button type="button" class="cell" data-r="8" data-c="6" style="background:#b47650" aria-label="Строка 9, столбец 7"></button><button type="button" class="cell" data-r="8" data-c="7" style="background:#ff985c" aria-label="Строка 9, столбец 8"></button><button type="button" class="cell" data-r="8" data-c="8" style="background:#b47650" aria-label="Строка 9, столбец 9"></button><button type="button" class="cell" data-r="8" data-c="9" style="background:#b47650" aria-label="Строка 9, столбец 10"></button><button type="button" class="cell" data-r="9" data-c="0" style="background:#eb8ad6" aria-label="Строка 10, столбец 1"></button><button type="button" class="cell" data-r="9" data-c="1" style="background:#eb8ad6" aria-label="Строка 10, столбец 2"></button><button type="button" class="cell" data-r="9" data-c="2" style="background:#2f8c5a" aria-label="Строка 10, столбец 3"></button><button type="button" class="cell" data-r="9" data-c="3" style="background:#2f8c5a" aria-label="Строка 10, столбец 4"></button><button type="button" class="cell" data-r="9" data-c="4" style="background:#ff985c" aria-label="Строка 10, столбец 5"></button><button type="button" class="cell" data-r="9" data-c="5" style="background:#ff985c" aria-label="Строка 10, столбец 6"></button><button type="button" class="cell" data-r="9" data-c="6" style="background:#ff985c" aria-label="Строка 10, столбец 7"></button><button type="button" class="cell" data-r="9" data-c="7" style="background:#ff985c" aria-label="Строка 10, столбец 8"></button><button type="button" class="cell" data-r="9" data-c="8" style="background:#ff985c" aria-label="Строка 10, столбец 9"></button><button type="button" class="cell" data-r="9" data-c="9" style="background:#ff985c" aria-label="Строка 10, столбец 10"></button></div>
+      <div class="board" id="board"></div>
       <div class="win" id="win">Клумба готова 🌷</div>
       <div class="gameover" id="gameover">Жизни закончились 💔 Нажми «Сброс».</div>
       <div class="message" id="message" aria-live="polite">Найди места для цветов.</div>
@@ -293,42 +321,100 @@ button.hint{
 <script>
 (()=>{
   const DOUBLE_DELAY=240;
-  const flowerEmoji='🌼';
-
   const levels=[
     {
       name:'УРОВЕНЬ 1',
       region:[
-        ['O','Y','L','L','C','C','C','C','C','R'],
-        ['Y','Y','Y','L','L','C','C','C','C','R'],
-        ['Y','Y','Y','Y','L','C','C','C','C','C'],
-        ['Y','Y','L','L','L','L','L','C','B','C'],
-        ['Y','Y','L','P','P','P','L','L','B','C'],
-        ['Y','Y','L','P','L','P','L','B','B','B'],
-        ['Y','Y','Y','P','L','L','L','L','B','B'],
-        ['M','M','Y','L','L','L','B','B','B','B'],
-        ['M','M','M','L','A','B','B','A','B','B'],
-        ['M','M','G','G','A','A','A','A','A','A']
+        ['C','O','G','O'],
+        ['C','O','O','O'],
+        ['C','C','P','O'],
+        ['C','P','P','O']
       ],
-      // Unique solution:
-      // R1C1, R2C10, R3C4, R4C8, R5C6,
-      // R6C9, R7C7, R8C2, R9C5, R10C3
-      solution:[0,9,3,7,5,8,6,1,4,2],
-      colors:{
-        O:'#d9ad00',
-        Y:'#f3d47a',
-        L:'#8bd17b',
-        C:'#40a9c1',
-        R:'#cf6a88',
-        B:'#b47650',
-        P:'#8576d3',
-        M:'#eb8ad6',
-        A:'#ff985c',
-        G:'#2f8c5a'
-      }
+      solution:[2,0,3,1],
+      colors:{C:'#40a9c1',O:'#ff985c',G:'#86cf77',P:'#cf6a88'}
     },
     {
       name:'УРОВЕНЬ 2',
+      region:[
+        ['P','P','P','Y','O'],
+        ['P','P','R','Y','O'],
+        ['P','P','Y','Y','Y'],
+        ['P','Y','Y','Y','Y'],
+        ['V','V','V','V','V']
+      ],
+      solution:[4,2,0,3,1],
+      colors:{P:'#eb8ad6',Y:'#f3d47a',O:'#d9ad00',R:'#cf6a88',V:'#8576d3'}
+    },
+    {
+      name:'УРОВЕНЬ 3',
+      region:[
+        ['R','R','R','R','P','P'],
+        ['R','R','P','P','P','P'],
+        ['R','G','G','P','V','P'],
+        ['G','G','G','V','V','P'],
+        ['Y','Y','G','G','V','P'],
+        ['G','G','G','G','L','P']
+      ],
+      solution:[2,5,1,3,0,4],
+      colors:{R:'#cf6a88',P:'#eb8ad6',G:'#2f8c5a',V:'#8576d3',Y:'#d9ad00',L:'#f3d47a'}
+    },
+    {
+      name:'УРОВЕНЬ 4',
+      region:[
+        ['O','B','B','B','B','B'],
+        ['O','B','B','B','G','V'],
+        ['B','B','B','G','G','P'],
+        ['B','G','G','G','P','P'],
+        ['G','G','G','G','G','P'],
+        ['G','R','R','R','R','P']
+      ],
+      solution:[0,5,2,4,1,3],
+      colors:{O:'#d9ad00',B:'#b47650',G:'#8bd17b',V:'#8576d3',P:'#eb8ad6',R:'#cf6a88'}
+    },
+    {
+      name:'УРОВЕНЬ 5',
+      region:[
+        ['B','B','B','B','B','B','B','B'],
+        ['B','O','B','G','B','G','B','B'],
+        ['O','O','G','G','G','G','G','B'],
+        ['G','G','G','A','A','A','B','B'],
+        ['G','R','G','G','A','B','B','B'],
+        ['G','C','P','P','A','B','V','V'],
+        ['G','C','C','A','A','A','V','V'],
+        ['G','G','C','C','A','A','V','V']
+      ],
+      solution:[7,5,0,4,1,3,6,2],
+      colors:{B:'#b47650',O:'#d9ad00',G:'#8bd17b',A:'#ff985c',R:'#cf6a88',C:'#40a9c1',P:'#eb8ad6',V:'#8576d3'}
+    },
+    {
+      name:'УРОВЕНЬ 6',
+      region:[
+        ['O','B','P','P','P','P'],
+        ['O','B','B','B','P','R'],
+        ['B','B','V','P','P','R'],
+        ['B','B','B','B','P','C'],
+        ['B','B','C','B','P','C'],
+        ['C','C','C','C','C','C']
+      ],
+      solution:[0,5,2,4,1,3],
+      colors:{O:'#d9ad00',B:'#b47650',P:'#eb8ad6',R:'#cf6a88',V:'#8576d3',C:'#40a9c1'}
+    },
+    {
+      name:'УРОВЕНЬ 7',
+      region:[
+        ['P','P','P','P','P','P','B'],
+        ['P','P','C','R','P','P','B'],
+        ['P','C','C','R','R','P','B'],
+        ['C','C','C','Y','Y','V','B'],
+        ['C','C','Y','Y','O','B','B'],
+        ['C','B','Y','B','O','O','B'],
+        ['B','B','B','B','B','B','B']
+      ],
+      solution:[0,3,1,5,2,4,6],
+      colors:{P:'#eb8ad6',B:'#b47650',C:'#40a9c1',R:'#cf6a88',Y:'#f3d47a',V:'#8576d3',O:'#d9ad00'}
+    },
+    {
+      name:'УРОВЕНЬ 8',
       region:[
         ['Y','Y','G','G','G','G','G','L'],
         ['Y','B','O','L','L','G','L','L'],
@@ -340,19 +426,10 @@ button.hint{
         ['K','K','K','K','K','K','K','K']
       ],
       solution:[4,2,0,3,6,1,5,7],
-      colors:{
-        Y:'#d9ad00',
-        G:'#2f8c5a',
-        L:'#8bd17b',
-        B:'#b47650',
-        O:'#ff985c',
-        R:'#cf6a88',
-        P:'#8576d3',
-        K:'#eb8ad6'
-      }
+      colors:{Y:'#d9ad00',G:'#2f8c5a',L:'#8bd17b',B:'#b47650',O:'#ff985c',R:'#cf6a88',P:'#8576d3',K:'#eb8ad6'}
     },
     {
-      name:'УРОВЕНЬ 3',
+      name:'УРОВЕНЬ 9',
       region:[
         ['P','M','M','R','R','R','R','R','C','C'],
         ['P','P','M','R','M','R','M','R','R','C'],
@@ -365,23 +442,26 @@ button.hint{
         ['P','Y','Y','A','A','A','A','O','O','A'],
         ['P','P','Y','Y','Y','A','A','A','A','A']
       ],
-      // Unique solution for the supplied 10x10 region layout:
-      // R1C2, R2C4, R3C8, R4C10, R5C3, R6C1, R7C5, R8C7, R9C9, R10C6
       solution:[1,3,7,9,2,0,4,6,8,5],
-      colors:{
-        P:'#8576d3',
-        M:'#eb8ad6',
-        R:'#cf6a88',
-        C:'#40a9c1',
-        B:'#b47650',
-        L:'#8bd17b',
-        A:'#9fbfe0',
-        Y:'#f3d47a',
-        G:'#2f8c5a',
-        O:'#d9ad00'
-      }
+      colors:{P:'#8576d3',M:'#eb8ad6',R:'#cf6a88',C:'#40a9c1',B:'#b47650',L:'#8bd17b',A:'#9fbfe0',Y:'#f3d47a',G:'#2f8c5a',O:'#d9ad00'}
+    },
+    {
+      name:'УРОВЕНЬ 10',
+      region:[
+        ['O','Y','L','L','C','C','C','C','C','R'],
+        ['Y','Y','Y','L','L','C','C','C','C','R'],
+        ['Y','Y','Y','Y','L','C','C','C','C','C'],
+        ['Y','Y','L','L','L','L','L','C','B','C'],
+        ['Y','Y','L','P','P','P','L','L','B','C'],
+        ['Y','Y','L','P','L','P','L','B','B','B'],
+        ['Y','Y','Y','P','L','L','L','L','B','B'],
+        ['M','M','Y','L','L','L','B','B','B','B'],
+        ['M','M','M','L','A','B','B','A','B','B'],
+        ['M','M','G','G','A','A','A','A','A','A']
+      ],
+      solution:[0,9,3,7,5,8,6,1,4,2],
+      colors:{O:'#d9ad00',Y:'#f3d47a',L:'#8bd17b',C:'#40a9c1',R:'#cf6a88',B:'#b47650',P:'#8576d3',M:'#eb8ad6',A:'#ff985c',G:'#2f8c5a'}
     }
-  
   ];
 
   const board=document.getElementById('board');
@@ -406,9 +486,8 @@ button.hint{
   let redMarks=new Set();
   let singleClickTimer=null;
   let pendingKey=null;
-  let justFoundKey=null;
 
-  function key(r,c){ return String(r)+','+String(c); }
+  const key=(r,c)=>`${r},${c}`;
 
   function loadLevel(index){
     levelIndex=index;
@@ -424,10 +503,9 @@ button.hint{
     found.clear();
     whiteMarks.clear();
     redMarks.clear();
-    justFoundKey=null;
 
-    board.style.gridTemplateColumns='repeat('+N+',minmax(0,1fr))';
-    board.style.gridTemplateRows='repeat('+N+',minmax(0,1fr))';
+    board.style.gridTemplateColumns=`repeat(${N},minmax(0,1fr))`;
+    board.style.gridTemplateRows=`repeat(${N},minmax(0,1fr))`;
     board.classList.toggle('size-10',N===10);
 
     levelLabel.textContent=level.name;
@@ -447,7 +525,7 @@ button.hint{
     const reg=region[r][c];
 
     for(const k of found){
-      var parts=k.split(','); var fr=Number(parts[0]); var fc=Number(parts[1]);
+      const [fr,fc]=k.split(',').map(Number);
 
       if(fr===r || fc===c) return true;
       if(Math.abs(fr-r)<=1 && Math.abs(fc-c)<=1) return true;
@@ -477,7 +555,7 @@ button.hint{
       heartsEl.appendChild(s);
     }
 
-    heartsEl.setAttribute('aria-label',String(lives)+' из 3 жизней');
+    heartsEl.setAttribute('aria-label',`${lives} из 3 жизней`);
   }
 
   function render(){
@@ -491,16 +569,28 @@ button.hint{
         b.type='button';
         b.className='cell';
         b.style.background=colors[region[r][c]];
-        b.setAttribute('aria-label','Строка '+(r+1)+', столбец '+(c+1));
+        b.setAttribute('aria-label',`Строка ${r+1}, столбец ${c+1}`);
 
         if(found.has(k)){
           b.classList.add('flower');
           b.disabled=true;
 
           const s=document.createElement('span');
-          s.className='flowerIcon';
-          if(justFoundKey===k) s.classList.add('just-found');
-          s.textContent=flowerEmoji;
+          s.className='capySprite';
+          s.innerHTML=`
+            <span class="capyBody"></span>
+            <span class="capyHead">
+              <span class="capyEar e1"></span><span class="capyEar e2"></span>
+              <span class="capyEye e1"></span><span class="capyEye e2"></span>
+              <span class="capySnout"></span><span class="capyNose"></span>
+            </span>
+            <span class="capyPaw p1"></span><span class="capyPaw p2"></span>
+            <span class="capyFlower">
+              <span class="stem"></span>
+              <span class="petal p1"></span><span class="petal p2"></span>
+              <span class="petal p3"></span><span class="petal p4"></span>
+              <span class="center"></span>
+            </span>`;
           b.appendChild(s);
 
         } else if(autoFilledAt(r,c)){
@@ -532,9 +622,11 @@ button.hint{
           if(lives<=0){
             b.disabled=true;
           } else {
-            b.addEventListener('click',function(event){
+            b.addEventListener('click',()=>queueSingleClick(r,c));
+            b.addEventListener('dblclick',(event)=>{
               event.preventDefault();
-              handleTap(r,c);
+              cancelPendingSingle();
+              attemptFlower(r,c);
             });
           }
         }
@@ -553,7 +645,7 @@ button.hint{
     nextLevelBtn.classList.toggle('show',won && levelIndex<levels.length-1);
 
     if(won && levelIndex===levels.length-1){
-      win.textContent='Все клумбы готовы 🌷';
+      win.textContent='Сад готов! 🌿';
     }else if(won){
       win.textContent='Клумба готова 🌷';
     }
@@ -567,29 +659,21 @@ button.hint{
     }
   }
 
-  function handleTap(r,c){
+  function queueSingleClick(r,c){
     if(lives<=0) return;
 
-    var k=key(r,c);
-
-    // A second tap on the same cell within DOUBLE_DELAY places a flower.
-    if(singleClickTimer!==null && pendingKey===k){
-      cancelPendingSingle();
-      attemptFlower(r,c);
-      return;
-    }
-
+    const k=key(r,c);
     cancelPendingSingle();
-    pendingKey=k;
 
-    singleClickTimer=setTimeout(function(){
+    pendingKey=k;
+    singleClickTimer=setTimeout(()=>{
       if(pendingKey===k && !found.has(k) && !redMarks.has(k) && !autoFilledAt(r,c)){
         if(whiteMarks.has(k)){
           whiteMarks.delete(k);
           msg.textContent='Белый крестик снят.';
         } else {
           whiteMarks.add(k);
-          msg.textContent='Белый крестик: считаем, что цветка здесь нет.';
+          msg.textContent='Белый крестик: считаем, что капибары здесь нет.';
         }
         render();
       }
@@ -610,10 +694,8 @@ button.hint{
 
     if(isFlower(r,c)){
       found.add(k);
-      justFoundKey=k;
-      msg.textContent='Верно — цветок найден 🌷';
+      msg.textContent='Верно — капибару найден 🌷';
       render();
-      setTimeout(()=>{ justFoundKey=null; },350);
       return;
     }
 
@@ -621,7 +703,7 @@ button.hint{
     lives=Math.max(0,lives-1);
 
     msg.textContent=lives>0
-      ? 'Ошибка. Минус одна жизнь — осталось '+lives+'.'
+      ? `Ошибка. Минус одна жизнь — осталось ${lives}.`
       : 'Ошибка. Жизни закончились.';
 
     render();
@@ -653,7 +735,7 @@ button.hint{
           cell.style.boxShadow=
             'inset 0 0 0 4px rgba(255,255,255,.9), inset 0 0 0 7px rgba(79,96,72,.55)';
 
-          msg.textContent='Подсказка: посмотри внимательнее на строку '+(r+1)+'.';
+          msg.textContent=`Подсказка: посмотри внимательнее на строку ${r+1}.`;
 
           setTimeout(()=>{
             if(cell) cell.style.boxShadow='';
