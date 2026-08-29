@@ -1,0 +1,671 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bloom Logic Playable</title>
+<style>
+:root{
+  --cream:#f8f3e8;
+  --ink:#4f6048;
+  --muted:#798371;
+  --dead:#d7d5c8;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  padding:20px;
+  background:#f3eee4;
+  font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  color:var(--ink);
+}
+.app{max-width:980px;margin:0 auto}
+.topbar{
+  display:flex;justify-content:space-between;align-items:center;
+  gap:16px;flex-wrap:wrap;margin-bottom:14px
+}
+.lives{
+  background:#fffaf2;border:2px solid #eee5d5;border-radius:18px;
+  padding:10px 16px;font-weight:800;display:flex;align-items:center;gap:10px
+}
+.hearts{display:flex;gap:4px;font-size:25px;line-height:1}
+.heart.lost{filter:grayscale(1);opacity:.23}
+.help{
+  background:#fffaf2;border:2px solid #eee5d5;border-radius:18px;
+  padding:10px 16px;color:#6e624f;font-weight:700
+}
+.layout{
+  display:grid;grid-template-columns:minmax(0,1fr) 190px;
+  gap:14px;align-items:start
+}
+.board-shell{
+  background:var(--cream);border:2px solid #eee5d5;border-radius:22px;
+  padding:10px;min-width:0
+}
+.board{
+  display:grid;
+  grid-template-columns:repeat(8,minmax(0,1fr));
+  grid-template-rows:repeat(8,minmax(0,1fr));
+  gap:5px;
+  width:100%;
+  aspect-ratio:1/1;
+  min-height:280px;
+  overflow:hidden;
+  position:relative;
+}
+.cell{
+  appearance:none;-webkit-appearance:none;
+  border:0;margin:0;padding:0;
+  width:100%;height:100%;min-width:0;min-height:0;
+  border-radius:7px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;position:relative;
+  font-size:clamp(18px,5vw,34px);line-height:1;
+  overflow:visible;
+  transition:transform .12s ease,box-shadow .12s ease,filter .16s ease;
+  z-index:2;
+}
+.cell:focus-visible{outline:3px solid #506b48;outline-offset:-3px}
+.cell.marked::after,
+.cell.error::after{
+  content:"×";
+  position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:clamp(28px,6vw,48px);
+  font-weight:300;
+  line-height:1;
+  pointer-events:none;
+}
+.cell.marked::after{
+  color:white;
+  text-shadow:0 1px 2px rgba(0,0,0,.15)
+}
+.cell.error::after{
+  color:#ee3f3f;
+  font-weight:500;
+  text-shadow:0 1px 2px rgba(255,255,255,.3)
+}
+
+/* seamless auto-filled cells */
+.cell.off{
+  cursor:default;
+  z-index:1;
+  border-radius:0;
+  background-color:#72a94f!important;
+  background-image:
+    linear-gradient(to right, rgba(48,88,38,.18) 0 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(48,88,38,.18) 0 1px, transparent 1px),
+    radial-gradient(ellipse at 18% 24%,rgba(255,255,255,.12) 0 2%,transparent 3%),
+    radial-gradient(ellipse at 72% 68%,rgba(40,92,35,.12) 0 2%,transparent 3%),
+    repeating-linear-gradient(78deg,transparent 0 9px,rgba(45,105,38,.09) 10px,transparent 12px),
+    repeating-linear-gradient(103deg,transparent 0 13px,rgba(230,245,190,.09) 14px,transparent 16px),
+    linear-gradient(135deg,#83b95d,#6fa44e 55%,#7caf56);
+  background-size:100% 100%,100% 100%,28px 28px,32px 32px,20px 20px,24px 24px,100% 100%;
+  box-shadow:
+    inset 1px 0 0 rgba(255,255,255,.10),
+    inset 0 1px 0 rgba(255,255,255,.08);
+  filter:none;
+  opacity:1;
+}
+
+.cell.off::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  box-sizing:border-box;
+  border-right:1px solid rgba(47,79,36,.16);
+  border-bottom:1px solid rgba(47,79,36,.16);
+  z-index:2;
+}
+
+.cell.off::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:inherit;
+  z-index:-1;
+  pointer-events:none;
+}
+.cell.off.join-l::before{left:-5px}
+.cell.off.join-r::before{right:-5px}
+.cell.off.join-u::before{top:-5px}
+.cell.off.join-d::before{bottom:-5px}
+.cell.off.edge-l{border-radius:7px 0 0 7px}
+.cell.off.edge-r{border-radius:0 7px 7px 0}
+.cell.off.edge-u{border-radius:7px 7px 0 0}
+.cell.off.edge-d{border-radius:0 0 7px 7px}
+
+.cell.flower,
+.cell.flower:disabled{
+  cursor:default;
+  z-index:4;
+  border-radius:7px;
+  opacity:1 !important;
+  filter:none !important;
+  -webkit-filter:none !important;
+  color:inherit;
+}
+.flowerIcon{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:100%;
+  height:100%;
+  font-size:clamp(38px,7.6vw,74px);
+  line-height:1;
+  transform-origin:center;
+  opacity:1 !important;
+  filter:none !important;
+  animation:none
+}
+.cell.wrongflash{animation:shake .24s linear}
+
+.side{display:flex;flex-direction:column;gap:12px;min-width:0}
+.card{
+  background:#fffaf2;border:2px solid #eee5d5;border-radius:18px;padding:14px
+}
+.level{font-size:20px;font-weight:800;text-align:center;margin-bottom:8px}
+.counter{text-align:center;font-size:18px;font-weight:700}
+.rules-title{font-size:15px;font-weight:800;text-align:center;margin-bottom:10px}
+.rules{display:grid;gap:10px;font-size:12px;line-height:1.35;color:#687261}
+.rule{display:grid;grid-template-columns:26px 1fr;gap:7px;align-items:start}
+.fi{font-size:21px;line-height:1}
+.controls{display:flex;gap:8px}
+button.ctrl{
+  flex:1;border:0;border-radius:14px;padding:11px 8px;font-weight:800;
+  cursor:pointer;background:#e9efe5;color:#53614f;min-height:44px
+}
+button.hint{
+  width:100%;border:0;border-radius:14px;padding:12px;font-weight:800;
+  background:#d97d99;color:white;cursor:pointer;min-height:46px
+}
+.message{
+  margin-top:10px;font-size:13px;color:var(--muted);text-align:center;
+  min-height:20px
+}
+.gameover,.win{
+  margin-top:12px;text-align:center;font-weight:800;border-radius:14px;
+  padding:12px;display:none
+}
+.win{background:#edf5e8}
+.gameover{background:#f8e5e5;color:#8b4646}
+.show{display:block}
+.next-level{
+  display:none;
+  width:100%;
+  margin-top:10px;
+  border:0;
+  border-radius:14px;
+  padding:12px;
+  min-height:46px;
+  background:#7fb36a;
+  color:white;
+  font-weight:800;
+  cursor:pointer;
+}
+.next-level.show{display:block}
+.board.size-10 .flowerIcon{font-size:clamp(30px,5.8vw,58px)}
+
+@keyframes bloom{
+  0%{transform:scale(.15);opacity:.2}
+  75%{transform:scale(1.2);opacity:1}
+  100%{transform:scale(1)}
+}
+@keyframes shake{
+  0%,100%{transform:translateX(0)}
+  25%{transform:translateX(-4px)}
+  50%{transform:translateX(4px)}
+  75%{transform:translateX(-2px)}
+}
+@media(max-width:620px){
+  body{padding:10px}
+  .layout{grid-template-columns:1fr}
+  .side{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .rules-card{grid-column:1/-1}
+}
+@media(max-width:400px){
+  .side{grid-template-columns:1fr}
+  .rules-card{grid-column:auto}
+}
+@media(prefers-reduced-motion:reduce){
+  .cell,.flowerIcon{animation:none!important;transition:none!important}
+}
+
+.flowerIcon.just-found{
+  animation:bloom .28s cubic-bezier(.2,.9,.2,1.15);
+}
+
+
+.cell{
+  -webkit-tap-highlight-color:transparent;
+  -webkit-touch-callout:none;
+  -webkit-user-select:none;
+  user-select:none;
+  touch-action:manipulation;
+}
+
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="lives">
+      <span>ЖИЗНИ</span>
+      <div class="hearts" id="hearts" aria-label="3 жизни"></div>
+    </div>
+    <div class="help">1 клик — ✕ &nbsp;&nbsp; быстрый двойной клик — 🌷</div>
+  </div>
+
+  <div class="layout">
+    <section class="board-shell">
+      <div class="board size-10" id="board"><button type="button" class="cell" data-r="0" data-c="0" style="background:#d9ad00" aria-label="Строка 1, столбец 1"></button><button type="button" class="cell" data-r="0" data-c="1" style="background:#f3d47a" aria-label="Строка 1, столбец 2"></button><button type="button" class="cell" data-r="0" data-c="2" style="background:#8bd17b" aria-label="Строка 1, столбец 3"></button><button type="button" class="cell" data-r="0" data-c="3" style="background:#8bd17b" aria-label="Строка 1, столбец 4"></button><button type="button" class="cell" data-r="0" data-c="4" style="background:#40a9c1" aria-label="Строка 1, столбец 5"></button><button type="button" class="cell" data-r="0" data-c="5" style="background:#40a9c1" aria-label="Строка 1, столбец 6"></button><button type="button" class="cell" data-r="0" data-c="6" style="background:#40a9c1" aria-label="Строка 1, столбец 7"></button><button type="button" class="cell" data-r="0" data-c="7" style="background:#40a9c1" aria-label="Строка 1, столбец 8"></button><button type="button" class="cell" data-r="0" data-c="8" style="background:#40a9c1" aria-label="Строка 1, столбец 9"></button><button type="button" class="cell" data-r="0" data-c="9" style="background:#cf6a88" aria-label="Строка 1, столбец 10"></button><button type="button" class="cell" data-r="1" data-c="0" style="background:#f3d47a" aria-label="Строка 2, столбец 1"></button><button type="button" class="cell" data-r="1" data-c="1" style="background:#f3d47a" aria-label="Строка 2, столбец 2"></button><button type="button" class="cell" data-r="1" data-c="2" style="background:#f3d47a" aria-label="Строка 2, столбец 3"></button><button type="button" class="cell" data-r="1" data-c="3" style="background:#8bd17b" aria-label="Строка 2, столбец 4"></button><button type="button" class="cell" data-r="1" data-c="4" style="background:#8bd17b" aria-label="Строка 2, столбец 5"></button><button type="button" class="cell" data-r="1" data-c="5" style="background:#40a9c1" aria-label="Строка 2, столбец 6"></button><button type="button" class="cell" data-r="1" data-c="6" style="background:#40a9c1" aria-label="Строка 2, столбец 7"></button><button type="button" class="cell" data-r="1" data-c="7" style="background:#40a9c1" aria-label="Строка 2, столбец 8"></button><button type="button" class="cell" data-r="1" data-c="8" style="background:#40a9c1" aria-label="Строка 2, столбец 9"></button><button type="button" class="cell" data-r="1" data-c="9" style="background:#cf6a88" aria-label="Строка 2, столбец 10"></button><button type="button" class="cell" data-r="2" data-c="0" style="background:#f3d47a" aria-label="Строка 3, столбец 1"></button><button type="button" class="cell" data-r="2" data-c="1" style="background:#f3d47a" aria-label="Строка 3, столбец 2"></button><button type="button" class="cell" data-r="2" data-c="2" style="background:#f3d47a" aria-label="Строка 3, столбец 3"></button><button type="button" class="cell" data-r="2" data-c="3" style="background:#f3d47a" aria-label="Строка 3, столбец 4"></button><button type="button" class="cell" data-r="2" data-c="4" style="background:#8bd17b" aria-label="Строка 3, столбец 5"></button><button type="button" class="cell" data-r="2" data-c="5" style="background:#40a9c1" aria-label="Строка 3, столбец 6"></button><button type="button" class="cell" data-r="2" data-c="6" style="background:#40a9c1" aria-label="Строка 3, столбец 7"></button><button type="button" class="cell" data-r="2" data-c="7" style="background:#40a9c1" aria-label="Строка 3, столбец 8"></button><button type="button" class="cell" data-r="2" data-c="8" style="background:#40a9c1" aria-label="Строка 3, столбец 9"></button><button type="button" class="cell" data-r="2" data-c="9" style="background:#40a9c1" aria-label="Строка 3, столбец 10"></button><button type="button" class="cell" data-r="3" data-c="0" style="background:#f3d47a" aria-label="Строка 4, столбец 1"></button><button type="button" class="cell" data-r="3" data-c="1" style="background:#f3d47a" aria-label="Строка 4, столбец 2"></button><button type="button" class="cell" data-r="3" data-c="2" style="background:#8bd17b" aria-label="Строка 4, столбец 3"></button><button type="button" class="cell" data-r="3" data-c="3" style="background:#8bd17b" aria-label="Строка 4, столбец 4"></button><button type="button" class="cell" data-r="3" data-c="4" style="background:#8bd17b" aria-label="Строка 4, столбец 5"></button><button type="button" class="cell" data-r="3" data-c="5" style="background:#8bd17b" aria-label="Строка 4, столбец 6"></button><button type="button" class="cell" data-r="3" data-c="6" style="background:#8bd17b" aria-label="Строка 4, столбец 7"></button><button type="button" class="cell" data-r="3" data-c="7" style="background:#40a9c1" aria-label="Строка 4, столбец 8"></button><button type="button" class="cell" data-r="3" data-c="8" style="background:#b47650" aria-label="Строка 4, столбец 9"></button><button type="button" class="cell" data-r="3" data-c="9" style="background:#40a9c1" aria-label="Строка 4, столбец 10"></button><button type="button" class="cell" data-r="4" data-c="0" style="background:#f3d47a" aria-label="Строка 5, столбец 1"></button><button type="button" class="cell" data-r="4" data-c="1" style="background:#f3d47a" aria-label="Строка 5, столбец 2"></button><button type="button" class="cell" data-r="4" data-c="2" style="background:#8bd17b" aria-label="Строка 5, столбец 3"></button><button type="button" class="cell" data-r="4" data-c="3" style="background:#8576d3" aria-label="Строка 5, столбец 4"></button><button type="button" class="cell" data-r="4" data-c="4" style="background:#8576d3" aria-label="Строка 5, столбец 5"></button><button type="button" class="cell" data-r="4" data-c="5" style="background:#8576d3" aria-label="Строка 5, столбец 6"></button><button type="button" class="cell" data-r="4" data-c="6" style="background:#8bd17b" aria-label="Строка 5, столбец 7"></button><button type="button" class="cell" data-r="4" data-c="7" style="background:#8bd17b" aria-label="Строка 5, столбец 8"></button><button type="button" class="cell" data-r="4" data-c="8" style="background:#b47650" aria-label="Строка 5, столбец 9"></button><button type="button" class="cell" data-r="4" data-c="9" style="background:#40a9c1" aria-label="Строка 5, столбец 10"></button><button type="button" class="cell" data-r="5" data-c="0" style="background:#f3d47a" aria-label="Строка 6, столбец 1"></button><button type="button" class="cell" data-r="5" data-c="1" style="background:#f3d47a" aria-label="Строка 6, столбец 2"></button><button type="button" class="cell" data-r="5" data-c="2" style="background:#8bd17b" aria-label="Строка 6, столбец 3"></button><button type="button" class="cell" data-r="5" data-c="3" style="background:#8576d3" aria-label="Строка 6, столбец 4"></button><button type="button" class="cell" data-r="5" data-c="4" style="background:#8bd17b" aria-label="Строка 6, столбец 5"></button><button type="button" class="cell" data-r="5" data-c="5" style="background:#8576d3" aria-label="Строка 6, столбец 6"></button><button type="button" class="cell" data-r="5" data-c="6" style="background:#8bd17b" aria-label="Строка 6, столбец 7"></button><button type="button" class="cell" data-r="5" data-c="7" style="background:#b47650" aria-label="Строка 6, столбец 8"></button><button type="button" class="cell" data-r="5" data-c="8" style="background:#b47650" aria-label="Строка 6, столбец 9"></button><button type="button" class="cell" data-r="5" data-c="9" style="background:#b47650" aria-label="Строка 6, столбец 10"></button><button type="button" class="cell" data-r="6" data-c="0" style="background:#f3d47a" aria-label="Строка 7, столбец 1"></button><button type="button" class="cell" data-r="6" data-c="1" style="background:#f3d47a" aria-label="Строка 7, столбец 2"></button><button type="button" class="cell" data-r="6" data-c="2" style="background:#f3d47a" aria-label="Строка 7, столбец 3"></button><button type="button" class="cell" data-r="6" data-c="3" style="background:#8576d3" aria-label="Строка 7, столбец 4"></button><button type="button" class="cell" data-r="6" data-c="4" style="background:#8bd17b" aria-label="Строка 7, столбец 5"></button><button type="button" class="cell" data-r="6" data-c="5" style="background:#8bd17b" aria-label="Строка 7, столбец 6"></button><button type="button" class="cell" data-r="6" data-c="6" style="background:#8bd17b" aria-label="Строка 7, столбец 7"></button><button type="button" class="cell" data-r="6" data-c="7" style="background:#8bd17b" aria-label="Строка 7, столбец 8"></button><button type="button" class="cell" data-r="6" data-c="8" style="background:#b47650" aria-label="Строка 7, столбец 9"></button><button type="button" class="cell" data-r="6" data-c="9" style="background:#b47650" aria-label="Строка 7, столбец 10"></button><button type="button" class="cell" data-r="7" data-c="0" style="background:#eb8ad6" aria-label="Строка 8, столбец 1"></button><button type="button" class="cell" data-r="7" data-c="1" style="background:#eb8ad6" aria-label="Строка 8, столбец 2"></button><button type="button" class="cell" data-r="7" data-c="2" style="background:#f3d47a" aria-label="Строка 8, столбец 3"></button><button type="button" class="cell" data-r="7" data-c="3" style="background:#8bd17b" aria-label="Строка 8, столбец 4"></button><button type="button" class="cell" data-r="7" data-c="4" style="background:#8bd17b" aria-label="Строка 8, столбец 5"></button><button type="button" class="cell" data-r="7" data-c="5" style="background:#8bd17b" aria-label="Строка 8, столбец 6"></button><button type="button" class="cell" data-r="7" data-c="6" style="background:#b47650" aria-label="Строка 8, столбец 7"></button><button type="button" class="cell" data-r="7" data-c="7" style="background:#b47650" aria-label="Строка 8, столбец 8"></button><button type="button" class="cell" data-r="7" data-c="8" style="background:#b47650" aria-label="Строка 8, столбец 9"></button><button type="button" class="cell" data-r="7" data-c="9" style="background:#b47650" aria-label="Строка 8, столбец 10"></button><button type="button" class="cell" data-r="8" data-c="0" style="background:#eb8ad6" aria-label="Строка 9, столбец 1"></button><button type="button" class="cell" data-r="8" data-c="1" style="background:#eb8ad6" aria-label="Строка 9, столбец 2"></button><button type="button" class="cell" data-r="8" data-c="2" style="background:#eb8ad6" aria-label="Строка 9, столбец 3"></button><button type="button" class="cell" data-r="8" data-c="3" style="background:#8bd17b" aria-label="Строка 9, столбец 4"></button><button type="button" class="cell" data-r="8" data-c="4" style="background:#ff985c" aria-label="Строка 9, столбец 5"></button><button type="button" class="cell" data-r="8" data-c="5" style="background:#b47650" aria-label="Строка 9, столбец 6"></button><button type="button" class="cell" data-r="8" data-c="6" style="background:#b47650" aria-label="Строка 9, столбец 7"></button><button type="button" class="cell" data-r="8" data-c="7" style="background:#ff985c" aria-label="Строка 9, столбец 8"></button><button type="button" class="cell" data-r="8" data-c="8" style="background:#b47650" aria-label="Строка 9, столбец 9"></button><button type="button" class="cell" data-r="8" data-c="9" style="background:#b47650" aria-label="Строка 9, столбец 10"></button><button type="button" class="cell" data-r="9" data-c="0" style="background:#eb8ad6" aria-label="Строка 10, столбец 1"></button><button type="button" class="cell" data-r="9" data-c="1" style="background:#eb8ad6" aria-label="Строка 10, столбец 2"></button><button type="button" class="cell" data-r="9" data-c="2" style="background:#2f8c5a" aria-label="Строка 10, столбец 3"></button><button type="button" class="cell" data-r="9" data-c="3" style="background:#2f8c5a" aria-label="Строка 10, столбец 4"></button><button type="button" class="cell" data-r="9" data-c="4" style="background:#ff985c" aria-label="Строка 10, столбец 5"></button><button type="button" class="cell" data-r="9" data-c="5" style="background:#ff985c" aria-label="Строка 10, столбец 6"></button><button type="button" class="cell" data-r="9" data-c="6" style="background:#ff985c" aria-label="Строка 10, столбец 7"></button><button type="button" class="cell" data-r="9" data-c="7" style="background:#ff985c" aria-label="Строка 10, столбец 8"></button><button type="button" class="cell" data-r="9" data-c="8" style="background:#ff985c" aria-label="Строка 10, столбец 9"></button><button type="button" class="cell" data-r="9" data-c="9" style="background:#ff985c" aria-label="Строка 10, столбец 10"></button></div>
+      <div class="win" id="win">Клумба готова 🌷</div>
+      <div class="gameover" id="gameover">Жизни закончились 💔 Нажми «Сброс».</div>
+      <div class="message" id="message" aria-live="polite">Найди места для цветов.</div>
+    </section>
+
+    <aside class="side">
+      <section class="card">
+        <div class="level" id="levelLabel">УРОВЕНЬ 1</div>
+        <div class="counter"><span id="count">0</span> / <span id="total">8</span></div>
+      </section>
+
+      <section class="card rules-card">
+        <div class="rules-title">ПРАВИЛА</div>
+        <div class="rules">
+          <div class="rule"><span class="fi">🌸</span><span>По одному цветку в каждой строке</span></div>
+          <div class="rule"><span class="fi">🌼</span><span>По одному цветку в каждом столбце</span></div>
+          <div class="rule"><span class="fi">🌺</span><span>По одному цветку в каждой цветной области</span></div>
+          <div class="rule"><span class="fi">🌷</span><span>Цветы не могут касаться друг друга, даже по диагонали</span></div>
+        </div>
+      </section>
+
+      <div class="controls">
+        <button class="ctrl" id="reset" type="button">↻ Сброс</button>
+      </div>
+      <button class="hint" id="hint" type="button">💡 Подсказка</button>
+      <button class="next-level" id="nextLevel" type="button">Следующий уровень →</button>
+    </aside>
+  </div>
+</div>
+
+<script>
+(()=>{
+  const DOUBLE_DELAY=240;
+  const flowerEmoji='🌼';
+
+  const levels=[
+    {
+      name:'УРОВЕНЬ 1',
+      region:[
+        ['O','Y','L','L','C','C','C','C','C','R'],
+        ['Y','Y','Y','L','L','C','C','C','C','R'],
+        ['Y','Y','Y','Y','L','C','C','C','C','C'],
+        ['Y','Y','L','L','L','L','L','C','B','C'],
+        ['Y','Y','L','P','P','P','L','L','B','C'],
+        ['Y','Y','L','P','L','P','L','B','B','B'],
+        ['Y','Y','Y','P','L','L','L','L','B','B'],
+        ['M','M','Y','L','L','L','B','B','B','B'],
+        ['M','M','M','L','A','B','B','A','B','B'],
+        ['M','M','G','G','A','A','A','A','A','A']
+      ],
+      // Unique solution:
+      // R1C1, R2C10, R3C4, R4C8, R5C6,
+      // R6C9, R7C7, R8C2, R9C5, R10C3
+      solution:[0,9,3,7,5,8,6,1,4,2],
+      colors:{
+        O:'#d9ad00',
+        Y:'#f3d47a',
+        L:'#8bd17b',
+        C:'#40a9c1',
+        R:'#cf6a88',
+        B:'#b47650',
+        P:'#8576d3',
+        M:'#eb8ad6',
+        A:'#ff985c',
+        G:'#2f8c5a'
+      }
+    },
+    {
+      name:'УРОВЕНЬ 2',
+      region:[
+        ['Y','Y','G','G','G','G','G','L'],
+        ['Y','B','O','L','L','G','L','L'],
+        ['Y','B','L','L','L','L','L','R'],
+        ['B','B','B','L','P','L','R','R'],
+        ['B','P','P','P','P','L','R','K'],
+        ['B','B','B','K','P','P','K','K'],
+        ['K','K','B','K','K','P','K','K'],
+        ['K','K','K','K','K','K','K','K']
+      ],
+      solution:[4,2,0,3,6,1,5,7],
+      colors:{
+        Y:'#d9ad00',
+        G:'#2f8c5a',
+        L:'#8bd17b',
+        B:'#b47650',
+        O:'#ff985c',
+        R:'#cf6a88',
+        P:'#8576d3',
+        K:'#eb8ad6'
+      }
+    },
+    {
+      name:'УРОВЕНЬ 3',
+      region:[
+        ['P','M','M','R','R','R','R','R','C','C'],
+        ['P','P','M','R','M','R','M','R','R','C'],
+        ['P','B','M','M','M','M','M','L','L','C'],
+        ['P','B','M','B','B','B','M','B','L','C'],
+        ['P','B','B','B','B','B','B','B','L','A'],
+        ['P','P','P','P','P','Y','Y','A','A','A'],
+        ['P','P','P','Y','Y','Y','A','A','G','A'],
+        ['P','P','Y','Y','A','Y','G','G','G','A'],
+        ['P','Y','Y','A','A','A','A','O','O','A'],
+        ['P','P','Y','Y','Y','A','A','A','A','A']
+      ],
+      // Unique solution for the supplied 10x10 region layout:
+      // R1C2, R2C4, R3C8, R4C10, R5C3, R6C1, R7C5, R8C7, R9C9, R10C6
+      solution:[1,3,7,9,2,0,4,6,8,5],
+      colors:{
+        P:'#8576d3',
+        M:'#eb8ad6',
+        R:'#cf6a88',
+        C:'#40a9c1',
+        B:'#b47650',
+        L:'#8bd17b',
+        A:'#9fbfe0',
+        Y:'#f3d47a',
+        G:'#2f8c5a',
+        O:'#d9ad00'
+      }
+    }
+  
+  ];
+
+  const board=document.getElementById('board');
+  const heartsEl=document.getElementById('hearts');
+  const countEl=document.getElementById('count');
+  const totalEl=document.getElementById('total');
+  const levelLabel=document.getElementById('levelLabel');
+  const msg=document.getElementById('message');
+  const win=document.getElementById('win');
+  const gameover=document.getElementById('gameover');
+  const nextLevelBtn=document.getElementById('nextLevel');
+
+  let levelIndex=0;
+  let N=levels[0].region.length;
+  let region=levels[0].region;
+  let solution=levels[0].solution;
+  let colors=levels[0].colors;
+
+  let lives=3;
+  let found=new Set();
+  let whiteMarks=new Set();
+  let redMarks=new Set();
+  let singleClickTimer=null;
+  let pendingKey=null;
+  let justFoundKey=null;
+
+  function key(r,c){ return String(r)+','+String(c); }
+
+  function loadLevel(index){
+    levelIndex=index;
+    const level=levels[levelIndex];
+
+    N=level.region.length;
+    region=level.region;
+    solution=level.solution;
+    colors=level.colors;
+
+    cancelPendingSingle();
+    lives=3;
+    found.clear();
+    whiteMarks.clear();
+    redMarks.clear();
+    justFoundKey=null;
+
+    board.style.gridTemplateColumns='repeat('+N+',minmax(0,1fr))';
+    board.style.gridTemplateRows='repeat('+N+',minmax(0,1fr))';
+    board.classList.toggle('size-10',N===10);
+
+    levelLabel.textContent=level.name;
+    totalEl.textContent=N;
+    win.textContent=levelIndex===levels.length-1
+      ? 'Клумба готова 🌷'
+      : 'Клумба готова 🌷';
+    msg.textContent='Найди места для цветов.';
+    render();
+  }
+
+  function isFlower(r,c){
+    return solution[r]===c;
+  }
+
+  function conflictsWithFound(r,c){
+    const reg=region[r][c];
+
+    for(const k of found){
+      var parts=k.split(','); var fr=Number(parts[0]); var fc=Number(parts[1]);
+
+      if(fr===r || fc===c) return true;
+      if(Math.abs(fr-r)<=1 && Math.abs(fc-c)<=1) return true;
+      if(region[fr][fc]===reg) return true;
+    }
+
+    return false;
+  }
+
+  function autoFilledAt(r,c){
+    if(r<0 || r>=N || c<0 || c>=N) return false;
+
+    const k=key(r,c);
+
+    if(found.has(k)) return false;
+
+    return conflictsWithFound(r,c);
+  }
+
+  function renderLives(){
+    heartsEl.innerHTML='';
+
+    for(let i=0;i<3;i++){
+      const s=document.createElement('span');
+      s.textContent='❤️';
+      s.className='heart'+(i>=lives?' lost':'');
+      heartsEl.appendChild(s);
+    }
+
+    heartsEl.setAttribute('aria-label',String(lives)+' из 3 жизней');
+  }
+
+  function render(){
+    board.innerHTML='';
+
+    for(let r=0;r<N;r++){
+      for(let c=0;c<N;c++){
+        const k=key(r,c);
+        const b=document.createElement('button');
+
+        b.type='button';
+        b.className='cell';
+        b.style.background=colors[region[r][c]];
+        b.setAttribute('aria-label','Строка '+(r+1)+', столбец '+(c+1));
+
+        if(found.has(k)){
+          b.classList.add('flower');
+          b.disabled=true;
+
+          const s=document.createElement('span');
+          s.className='flowerIcon';
+          if(justFoundKey===k) s.classList.add('just-found');
+          s.textContent=flowerEmoji;
+          b.appendChild(s);
+
+        } else if(autoFilledAt(r,c)){
+          whiteMarks.delete(k);
+          redMarks.delete(k);
+          b.classList.add('off');
+
+          const left=autoFilledAt(r,c-1);
+          const right=autoFilledAt(r,c+1);
+          const up=autoFilledAt(r-1,c);
+          const down=autoFilledAt(r+1,c);
+
+          if(left) b.classList.add('join-l'); else b.classList.add('edge-l');
+          if(right) b.classList.add('join-r'); else b.classList.add('edge-r');
+          if(up) b.classList.add('join-u'); else b.classList.add('edge-u');
+          if(down) b.classList.add('join-d'); else b.classList.add('edge-d');
+
+          b.disabled=true;
+
+        } else if(redMarks.has(k)){
+          b.classList.add('error');
+          b.disabled=true;
+
+        } else {
+          if(whiteMarks.has(k)){
+            b.classList.add('marked');
+          }
+
+          if(lives<=0){
+            b.disabled=true;
+          } else {
+            b.addEventListener('click',function(event){
+              event.preventDefault();
+              handleTap(r,c);
+            });
+          }
+        }
+
+        board.appendChild(b);
+      }
+    }
+
+    countEl.textContent=found.size;
+    totalEl.textContent=N;
+    renderLives();
+
+    const won=found.size===N;
+    win.classList.toggle('show',won);
+    gameover.classList.toggle('show',lives<=0 && !won);
+    nextLevelBtn.classList.toggle('show',won && levelIndex<levels.length-1);
+
+    if(won && levelIndex===levels.length-1){
+      win.textContent='Все клумбы готовы 🌷';
+    }else if(won){
+      win.textContent='Клумба готова 🌷';
+    }
+  }
+
+  function cancelPendingSingle(){
+    if(singleClickTimer!==null){
+      clearTimeout(singleClickTimer);
+      singleClickTimer=null;
+      pendingKey=null;
+    }
+  }
+
+  function handleTap(r,c){
+    if(lives<=0) return;
+
+    var k=key(r,c);
+
+    // A second tap on the same cell within DOUBLE_DELAY places a flower.
+    if(singleClickTimer!==null && pendingKey===k){
+      cancelPendingSingle();
+      attemptFlower(r,c);
+      return;
+    }
+
+    cancelPendingSingle();
+    pendingKey=k;
+
+    singleClickTimer=setTimeout(function(){
+      if(pendingKey===k && !found.has(k) && !redMarks.has(k) && !autoFilledAt(r,c)){
+        if(whiteMarks.has(k)){
+          whiteMarks.delete(k);
+          msg.textContent='Белый крестик снят.';
+        } else {
+          whiteMarks.add(k);
+          msg.textContent='Белый крестик: считаем, что цветка здесь нет.';
+        }
+        render();
+      }
+
+      singleClickTimer=null;
+      pendingKey=null;
+    },DOUBLE_DELAY);
+  }
+
+  function attemptFlower(r,c){
+    if(lives<=0) return;
+
+    const k=key(r,c);
+
+    if(found.has(k) || redMarks.has(k) || autoFilledAt(r,c)) return;
+
+    whiteMarks.delete(k);
+
+    if(isFlower(r,c)){
+      found.add(k);
+      justFoundKey=k;
+      msg.textContent='Верно — цветок найден 🌷';
+      render();
+      setTimeout(()=>{ justFoundKey=null; },350);
+      return;
+    }
+
+    redMarks.add(k);
+    lives=Math.max(0,lives-1);
+
+    msg.textContent=lives>0
+      ? 'Ошибка. Минус одна жизнь — осталось '+lives+'.'
+      : 'Ошибка. Жизни закончились.';
+
+    render();
+  }
+
+  document.getElementById('reset').addEventListener('click',()=>{
+    loadLevel(levelIndex);
+  });
+
+  nextLevelBtn.addEventListener('click',()=>{
+    if(levelIndex<levels.length-1){
+      loadLevel(levelIndex+1);
+    }
+  });
+
+  document.getElementById('hint').addEventListener('click',()=>{
+    if(lives<=0) return;
+
+    cancelPendingSingle();
+
+    for(let r=0;r<N;r++){
+      const c=solution[r];
+      const k=key(r,c);
+
+      if(!found.has(k) && !autoFilledAt(r,c)){
+        const cell=board.children[r*N+c];
+
+        if(cell){
+          cell.style.boxShadow=
+            'inset 0 0 0 4px rgba(255,255,255,.9), inset 0 0 0 7px rgba(79,96,72,.55)';
+
+          msg.textContent='Подсказка: посмотри внимательнее на строку '+(r+1)+'.';
+
+          setTimeout(()=>{
+            if(cell) cell.style.boxShadow='';
+          },1200);
+        }
+        break;
+      }
+    }
+  });
+
+  loadLevel(0);
+})();
+</script>
+</body>
+</html>
