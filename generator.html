@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Capydoku Level Editor v4 · Generator</title>
+<style>
+  :root{
+    --bg:#f4efe7; --panel:#fffaf3; --ink:#342c27; --muted:#81756d; --line:#d9cfc3;
+    --accent:#6a9e63; --accent2:#527c4d; --danger:#c95f57; --shadow:0 12px 36px rgba(66,48,33,.12);
+    --cell:58px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(135deg,#f8f4ed 0%,#eee8de 100%);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh}
+  button,input,select,textarea{font:inherit}
+  button{cursor:pointer}
+  .app{display:grid;grid-template-columns:300px minmax(0,1fr) 330px;gap:18px;padding:18px;min-height:100vh}
+  .panel{background:rgba(255,250,243,.94);border:1px solid rgba(110,90,73,.15);border-radius:18px;box-shadow:var(--shadow);padding:16px;min-width:0}
+  .brand{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .logo{width:42px;height:42px;border-radius:14px;background:#8fb784;display:grid;place-items:center;font-size:24px;box-shadow:inset 0 -4px 0 rgba(0,0,0,.06)}
+  h1{font-size:19px;margin:0}.sub{font-size:12px;color:var(--muted);margin-top:2px}
+  h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:#73675e;margin:18px 0 9px}
+  .row{display:flex;gap:8px;align-items:center}.row>*{min-width:0}
+  .grow{flex:1}
+  .field{display:flex;flex-direction:column;gap:5px;margin:8px 0}.field label{font-size:12px;color:var(--muted)}
+  input[type=number],input[type=text],select,textarea{width:100%;border:1px solid var(--line);background:#fff;border-radius:10px;padding:9px 10px;color:var(--ink);outline:none}
+  input:focus,select:focus,textarea:focus{border-color:#9dbb95;box-shadow:0 0 0 3px rgba(106,158,99,.12)}
+  .btn{border:0;border-radius:11px;padding:9px 11px;background:#ece4da;color:var(--ink);font-weight:650;font-size:13px;transition:.15s}
+  .btn:hover{transform:translateY(-1px);filter:brightness(.98)}
+  .btn.primary{background:var(--accent);color:white}.btn.primary:hover{background:var(--accent2)}
+  .btn.danger{background:#f3dedb;color:#8d3d37}.btn.ghost{background:transparent;border:1px solid var(--line)}
+  .btn.icon{padding:8px 10px;min-width:38px}
+  .toolbar{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .tool{border:1px solid var(--line);background:#fff;border-radius:12px;padding:10px;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:650;text-align:left}
+  .tool.active{border-color:#759b6d;background:#eef6eb;box-shadow:0 0 0 2px rgba(106,158,99,.14)}
+  .tool .ico{font-size:19px;width:24px;text-align:center}
+  .palette{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
+  .swatch{aspect-ratio:1;border-radius:10px;border:3px solid rgba(255,255,255,.9);box-shadow:0 0 0 1px rgba(70,55,42,.18);position:relative}
+  .swatch.active:after{content:"✓";position:absolute;inset:0;display:grid;place-items:center;color:white;font-weight:900;text-shadow:0 1px 3px rgba(0,0,0,.5)}
+  .center{display:flex;flex-direction:column;min-width:0}
+  .topbar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+  .mode-tabs{display:flex;background:#eee7de;border-radius:12px;padding:4px;gap:3px}.mode-tab{border:0;background:transparent;border-radius:9px;padding:8px 13px;font-weight:700;color:#746960}.mode-tab.active{background:#fff;color:var(--ink);box-shadow:0 2px 8px rgba(0,0,0,.08)}
+  .board-wrap{flex:1;min-height:520px;display:grid;place-items:center;overflow:auto;padding:22px;border-radius:16px;background:radial-gradient(circle at 50% 35%,#fffdf8 0,#f0e9df 72%);border:1px solid rgba(99,78,60,.13)}
+  .board{display:grid;gap:5px;user-select:none;touch-action:none;align-content:center;justify-content:center}
+  .cell{width:var(--cell);height:var(--cell);border-radius:12px;display:grid;place-items:center;position:relative;border:1px solid rgba(55,45,37,.15);box-shadow:inset 0 -3px 0 rgba(0,0,0,.045),0 2px 3px rgba(0,0,0,.05);transition:transform .08s,filter .08s;background:#fff}
+  .cell:hover{filter:brightness(1.03);transform:translateY(-1px)}
+  .cell .coord{position:absolute;left:5px;top:3px;font-size:9px;color:rgba(40,30,25,.34);font-weight:700}
+  .cell .entity{font-size:30px;filter:drop-shadow(0 2px 1px rgba(0,0,0,.12));z-index:2}
+  .cell .mark{font-size:26px;color:rgba(70,55,48,.58);font-weight:900;z-index:2}
+  .cell.hidden-solution .entity{visibility:hidden}
+  .cell.selected{outline:3px solid rgba(55,91,51,.55);outline-offset:1px}
+  .cell.region-boundary{box-shadow:inset 0 0 0 2px rgba(255,255,255,.5),inset 0 -3px 0 rgba(0,0,0,.06)}
+  .statusbar{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:12px;margin-top:10px;gap:10px;flex-wrap:wrap}
+  .stat{display:flex;gap:7px;align-items:center;background:#f3ece3;border-radius:999px;padding:6px 9px}
+  .right .card{border:1px solid var(--line);background:#fff;border-radius:14px;padding:12px;margin-bottom:10px}
+  .card-title{font-size:13px;font-weight:800;margin-bottom:7px}
+  .metric{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px dashed #eadfd4}.metric:last-child{border-bottom:0}
+  .ok{color:#54854e}.warn{color:#b7772f}.bad{color:#b94d47}
+  .check{display:flex;gap:8px;align-items:flex-start;font-size:12px;line-height:1.35;padding:6px 0}.dot{width:9px;height:9px;border-radius:50%;margin-top:4px;flex:0 0 auto}.dot.ok{background:#6da366}.dot.warn{background:#d69a4f}.dot.bad{background:#cc625a}
+  textarea{min-height:150px;resize:vertical;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:1.35}
+  .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%) translateY(20px);background:#302b27;color:#fff;padding:10px 14px;border-radius:10px;opacity:0;pointer-events:none;transition:.2s;z-index:10;font-size:13px}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .hint{font-size:11px;color:var(--muted);line-height:1.4}
+  .kbd{font-family:ui-monospace,monospace;background:#eee7df;border:1px solid #ddd2c7;border-bottom-width:2px;border-radius:5px;padding:1px 5px;color:#665a51}
+  .play-actions{display:none;gap:8px}.playtest .play-actions{display:flex}.playtest .author-actions{display:none}
+  .legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.legend span{font-size:11px;color:var(--muted);background:#f2ebe2;padding:4px 7px;border-radius:999px}
+  @media(max-width:1120px){.app{grid-template-columns:250px minmax(0,1fr)}.right{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}.right .card{margin:0}}
+  @media(max-width:780px){.app{display:block;padding:10px}.panel{margin-bottom:10px}.right{display:block}.board-wrap{min-height:420px;padding:14px}:root{--cell:48px}}
+
+  .solver-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+  .solver-result{font-size:13px;line-height:1.45}
+  .solver-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+  .solver-badge{padding:4px 8px;border-radius:999px;font-size:11px;font-weight:800;background:#eee7de}
+  .solver-badge.good{background:#e7f3e3;color:#3f7139}.solver-badge.bad{background:#f6dfdc;color:#91443d}.solver-badge.warn{background:#f7edcf;color:#806724}
+  .solver-score{font-size:28px;font-weight:850;letter-spacing:-.04em}.solver-score small{font-size:13px;color:var(--muted);font-weight:700;letter-spacing:0}
+  .solver-stepbox{margin-top:9px;padding:9px 10px;border-radius:11px;background:#f3ede5;border:1px solid #e2d7ca;font-size:12px;min-height:54px}
+  .logic-row{display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px dashed #e6ddd3}.logic-row:last-child{border-bottom:0}
+  .cell.solver-focus{box-shadow:0 0 0 4px rgba(76,129,70,.38), inset 0 0 0 2px rgba(255,255,255,.8)}
+  .cell.solver-removed{box-shadow:0 0 0 4px rgba(191,83,72,.32), inset 0 0 0 2px rgba(255,255,255,.8)}
+  .solver-tag{position:absolute;right:4px;bottom:3px;background:rgba(255,255,255,.9);border-radius:6px;padding:1px 4px;font-size:9px;font-weight:900;color:#5b5047}
+  .generator-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .generator-status{margin-top:9px;padding:9px 10px;border-radius:11px;background:#f3ede5;border:1px solid #e2d7ca;font-size:12px;line-height:1.4;min-height:42px}
+  .generator-status.good{background:#eaf4e7;border-color:#cfe2ca}
+  .generator-status.bad{background:#f7e4e2;border-color:#ebc8c4}
+  .progress{height:7px;background:#e8dfd5;border-radius:999px;overflow:hidden;margin-top:8px}.progress>span{display:block;height:100%;background:var(--accent);width:0%;transition:width .12s}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="panel left">
+    <div class="brand"><div class="logo">🐾</div><div><h1>Capydoku Editor v4</h1><div class="sub">Generator v1 · No-Guess</div></div></div>
+
+    <h2>Level</h2>
+    <div class="field"><label>Название</label><input id="levelName" value="New Capydoku Level"></div>
+    <div class="row">
+      <div class="field grow"><label>Строки</label><input id="rows" type="number" min="3" max="12" value="6"></div>
+      <div class="field grow"><label>Колонки</label><input id="cols" type="number" min="3" max="12" value="6"></div>
+    </div>
+    <div class="row"><button class="btn grow" id="resizeBtn">Изменить поле</button><button class="btn icon" id="clearBtn" title="Очистить">↺</button></div>
+
+    <h2>Tools</h2>
+    <div class="toolbar" id="tools">
+      <button class="tool active" data-tool="region"><span class="ico">🎨</span><span>Region</span></button>
+      <button class="tool" data-tool="capy"><span class="ico">🦫</span><span>Capybara</span></button>
+      <button class="tool" data-tool="block"><span class="ico">✕</span><span>Blocked</span></button>
+      <button class="tool" data-tool="erase"><span class="ico">⌫</span><span>Eraser</span></button>
+    </div>
+
+    <h2>Region color</h2>
+    <div class="palette" id="palette"></div>
+    <div class="field"><label>Region ID</label><input id="regionId" type="number" min="1" max="99" value="1"></div>
+    <div class="row"><button class="btn grow" id="newRegion">Новая область</button><button class="btn ghost grow" id="fillRegion">Flood fill</button></div>
+
+    <h2>History</h2>
+    <div class="row"><button class="btn grow" id="undoBtn">↶ Undo</button><button class="btn grow" id="redoBtn">Redo ↷</button></div>
+    <div class="hint" style="margin-top:8px">Рисовать можно мышью с зажатой кнопкой. <span class="kbd">1</span> Region, <span class="kbd">2</span> Capybara, <span class="kbd">3</span> Blocked, <span class="kbd">4</span> Eraser.</div>
+  </aside>
+
+  <main class="panel center" id="centerPanel">
+    <div class="topbar">
+      <div class="mode-tabs"><button class="mode-tab active" data-mode="author">Authoring</button><button class="mode-tab" data-mode="play">Playtest</button></div>
+      <div class="row author-actions"><button class="btn" id="saveLocal">Save</button><button class="btn" id="loadLocal">Load</button><button class="btn primary" id="exportBtn">Export JSON</button></div>
+      <div class="play-actions"><button class="btn" id="resetPlay">Reset test</button><button class="btn primary" id="checkPlay">Check</button></div>
+    </div>
+    <div class="board-wrap"><div class="board" id="board"></div></div>
+    <div class="statusbar">
+      <div class="row"><span class="stat" id="coordStat">Cell: —</span><span class="stat" id="toolStat">Tool: Region</span></div>
+      <div class="row"><span class="stat" id="capyStat">Capybaras: 0</span><span class="stat" id="regionStat">Regions: 0</span></div>
+    </div>
+  </main>
+
+  <aside class="panel right">
+    <div class="card"><div class="card-title">Level summary</div><div id="summary"></div></div>
+    <div class="card"><div class="card-title">Validation</div><div id="validation"></div></div>
+    <div class="card">
+      <div class="card-title">Generator v1</div>
+      <div class="generator-grid">
+        <div class="field" style="margin:0"><label>Capybaras</label><input id="genCapys" type="number" min="3" max="9" value="5"></div>
+        <div class="field" style="margin:0"><label>Difficulty 1–10</label><input id="genDifficulty" type="number" min="1" max="10" step="1" value="4"></div>
+      </div>
+      <div class="field"><label>Search effort</label><select id="genEffort"><option value="120">Fast · 120 candidates</option><option value="350" selected>Normal · 350 candidates</option><option value="900">Deep · 900 candidates</option></select></div>
+      <button class="btn primary" id="generateBtn" style="width:100%">Generate valid level</button>
+      <div class="progress"><span id="genProgress"></span></div>
+      <div class="generator-status" id="genStatus">Задай количество капибар и желаемую сложность.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Solver v2 · No Guessing</div>
+      <div id="solverResult" class="solver-result"><span style="color:var(--muted)">Нажми Analyze, чтобы проверить уникальность и обязательную решаемость без угадывания.</span></div>
+      <div class="solver-actions"><button class="btn primary" id="analyzeBtn">Analyze</button><button class="btn" id="solverStepBtn" disabled>Step →</button></div>
+      <div class="solver-stepbox" id="solverStepBox">Solver пока не запускался.</div>
+    </div>
+    <div class="card"><div class="card-title">JSON</div><textarea id="jsonBox" spellcheck="false"></textarea><div class="row" style="margin-top:8px"><button class="btn grow" id="applyJson">Apply JSON</button><button class="btn grow" id="copyJson">Copy</button></div></div>
+  </aside>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+(() => {
+  const COLORS = ['#e7838e','#f3aa63','#f3d36b','#8fcf83','#79c8b9','#78aee8','#9d8add','#c08bc6','#a88363','#7f8b93'];
+  const state = {
+    name:'New Capydoku Level', rows:6, cols:6, tool:'region', color:COLORS[0], regionId:1,
+    mode:'author', cells:[], undo:[], redo:[], playMarks:[], isPainting:false, lastCell:null, solverAnalysis:null, solverStep:-1, generating:false
+  };
+  const $ = id => document.getElementById(id);
+  const board=$('board'), toast=$('toast');
+  const clone = v => JSON.parse(JSON.stringify(v));
+
+  function blankCell(){ return {region:null,color:'#f7f3ed',solution:false,blocked:false}; }
+  function initGrid(r=state.rows,c=state.cols){ state.rows=r;state.cols=c;state.cells=Array.from({length:r*c},blankCell);state.playMarks=Array(r*c).fill(0);state.undo=[];state.redo=[];render(); }
+  function idx(r,c){return r*state.cols+c}
+  function snapshot(){return clone({name:state.name,rows:state.rows,cols:state.cols,cells:state.cells,regionId:state.regionId,color:state.color})}
+  function pushHistory(){ state.undo.push(snapshot()); if(state.undo.length>80)state.undo.shift(); state.redo=[]; clearSolver(); }
+  function restore(s){state.name=s.name;state.rows=s.rows;state.cols=s.cols;state.cells=clone(s.cells);state.regionId=s.regionId||1;state.color=s.color||COLORS[0];state.playMarks=Array(state.rows*state.cols).fill(0); syncInputs(); render();}
+  function undo(){if(!state.undo.length)return; state.redo.push(snapshot()); restore(state.undo.pop());}
+  function redo(){if(!state.redo.length)return; state.undo.push(snapshot()); restore(state.redo.pop());}
+
+  function buildPalette(){
+    $('palette').innerHTML=''; COLORS.forEach((c,i)=>{const b=document.createElement('button');b.className='swatch'+(c===state.color?' active':'');b.style.background=c;b.title='Color '+(i+1);b.onclick=()=>{state.color=c;document.querySelectorAll('.swatch').forEach(x=>x.classList.remove('active'));b.classList.add('active')};$('palette').appendChild(b)})
+  }
+  function setTool(t){state.tool=t;document.querySelectorAll('.tool').forEach(b=>b.classList.toggle('active',b.dataset.tool===t));$('toolStat').textContent='Tool: '+({region:'Region',capy:'Capybara',block:'Blocked',erase:'Eraser'}[t]);}
+
+  function paint(i, record=true){
+    if(state.mode!=='author')return;
+    if(record) pushHistory();
+    const c=state.cells[i];
+    if(state.tool==='region'){c.region=Number(state.regionId);c.color=state.color;}
+    if(state.tool==='capy'){c.solution=!c.solution;c.blocked=false;}
+    if(state.tool==='block'){c.blocked=!c.blocked;if(c.blocked)c.solution=false;}
+    if(state.tool==='erase'){state.cells[i]=blankCell();}
+    render(false);
+  }
+  function floodFill(start){
+    if(state.mode!=='author')return; pushHistory();
+    const target=state.cells[start].region, seen=new Set(), q=[start];
+    while(q.length){const i=q.shift();if(seen.has(i))continue;seen.add(i);const c=state.cells[i];if(c.region!==target)continue;c.region=Number(state.regionId);c.color=state.color;const r=Math.floor(i/state.cols), col=i%state.cols;[[r-1,col],[r+1,col],[r,col-1],[r,col+1]].forEach(([rr,cc])=>{if(rr>=0&&rr<state.rows&&cc>=0&&cc<state.cols)q.push(idx(rr,cc))});}
+    render();
+  }
+
+  function cellHTML(c,i){
+    const r=Math.floor(i/state.cols)+1, col=(i%state.cols)+1;
+    const hidden=state.mode==='play'?' hidden-solution':'';
+    let content=`<span class="coord">${r},${col}</span>`;
+    if(state.mode==='author'){
+      if(c.solution)content+='<span class="entity">🦫</span>';
+      if(c.blocked)content+='<span class="mark">✕</span>';
+    } else {
+      const m=state.playMarks[i]; if(m===1)content+='<span class="entity">🦫</span>'; if(m===2)content+='<span class="mark">✕</span>';
+      if(c.blocked)content+='<span class="mark">▰</span>';
+    }
+    return {content,hidden};
+  }
+
+  function render(updateJson=true){
+    board.style.gridTemplateColumns=`repeat(${state.cols}, var(--cell))`;
+    board.innerHTML='';
+    state.cells.forEach((c,i)=>{
+      const el=document.createElement('div');const h=cellHTML(c,i);el.className='cell'+h.hidden;el.style.background=c.color||'#f7f3ed';el.innerHTML=h.content;el.dataset.i=i;
+      if(state.solverAnalysis && state.solverStep>=0){const st=state.solverAnalysis.steps[state.solverStep];if(st){if((st.focus||[]).includes(i))el.classList.add('solver-focus');if((st.removed||[]).includes(i))el.classList.add('solver-removed');if((st.focus||[]).includes(i)|| (st.removed||[]).includes(i))el.innerHTML+=`<span class="solver-tag">L${st.tier}</span>`;}}
+      el.onmouseenter=()=>{$('coordStat').textContent=`Cell: ${Math.floor(i/state.cols)+1}, ${i%state.cols+1}`; if(state.isPainting && state.mode==='author' && state.tool==='region' && state.lastCell!==i){paint(i,false);state.lastCell=i}};
+      el.onmousedown=e=>{e.preventDefault();state.isPainting=true;state.lastCell=i;if(state.mode==='author')paint(i,true);else cyclePlay(i)};
+      board.appendChild(el);
+    });
+    updateStats(); if(updateJson) updateJsonBox();
+  }
+  document.addEventListener('mouseup',()=>{state.isPainting=false;state.lastCell=null});
+
+  function cyclePlay(i){if(state.mode!=='play'||state.cells[i].blocked)return;state.playMarks[i]=(state.playMarks[i]+1)%3;render(false)}
+  function resetPlay(){state.playMarks=Array(state.rows*state.cols).fill(0);render(false)}
+  function checkPlay(){
+    let wrong=0,missing=0;
+    state.cells.forEach((c,i)=>{if(c.blocked)return;const marked=state.playMarks[i]===1;if(marked!==c.solution){wrong++;if(c.solution&&!marked)missing++;}});
+    showToast(wrong===0?'✓ Решение совпадает':'Есть ошибки: '+wrong+' · пропущено капибар: '+missing);
+  }
+
+  function regionGroups(){
+    const map=new Map(); state.cells.forEach((c,i)=>{if(c.region!=null){if(!map.has(c.region))map.set(c.region,[]);map.get(c.region).push(i)}});return map;
+  }
+  function connected(indices){
+    if(!indices.length)return true;const set=new Set(indices),seen=new Set([indices[0]]),q=[indices[0]];
+    while(q.length){const i=q.shift(),r=Math.floor(i/state.cols),c=i%state.cols;[[r-1,c],[r+1,c],[r,c-1],[r,c+1]].forEach(([rr,cc])=>{if(rr>=0&&rr<state.rows&&cc>=0&&cc<state.cols){const j=idx(rr,cc);if(set.has(j)&&!seen.has(j)){seen.add(j);q.push(j)}}})} return seen.size===set.size;
+  }
+  function validations(){
+    const groups=regionGroups(); const blank=state.cells.filter(c=>c.region==null).length; const disconnected=[...groups.entries()].filter(([,inds])=>!connected(inds)).map(([id])=>id); const capys=state.cells.filter(c=>c.solution).length; const blocked=state.cells.filter(c=>c.blocked).length;
+    const out=[];
+    out.push({s:blank?'warn':'ok',t:blank?`${blank} cells have no region`:'All cells belong to a region'});
+    out.push({s:disconnected.length?'bad':'ok',t:disconnected.length?`Disconnected regions: ${disconnected.join(', ')}`:'All regions are connected'});
+    out.push({s:capys?'ok':'warn',t:capys?`${capys} authored capybara(s)`:'No authored capybaras'}); const emptyRegions=[...groups.entries()].filter(([,inds])=>inds.every(i=>state.cells[i].blocked)).map(([id])=>id); out.push({s:emptyRegions.length?'bad':'ok',t:emptyRegions.length?`Regions with no available cells: ${emptyRegions.join(', ')}`:'Every region has available cells'});
+    out.push({s:blocked?'ok':'ok',t:`${blocked} blocked cell(s)`});
+    return out;
+  }
+  function updateStats(){
+    const groups=regionGroups(), capys=state.cells.filter(c=>c.solution).length, blocks=state.cells.filter(c=>c.blocked).length;
+    $('capyStat').textContent=`Capybaras: ${capys}`;$('regionStat').textContent=`Regions: ${groups.size}`;
+    $('summary').innerHTML=`<div class="metric"><span>Grid</span><b>${state.rows} × ${state.cols}</b></div><div class="metric"><span>Regions</span><b>${groups.size}</b></div><div class="metric"><span>Capybaras</span><b>${capys}</b></div><div class="metric"><span>Blocked</span><b>${blocks}</b></div>`;
+    $('validation').innerHTML=validations().map(v=>`<div class="check"><span class="dot ${v.s}"></span><span>${v.t}</span></div>`).join('');
+  }
+
+  // ---------- Solver v2: deterministic only; guessing is never valid ----------
+  function clearSolver(){
+    state.solverAnalysis=null; state.solverStep=-1;
+    if($('solverResult')) $('solverResult').innerHTML='<span style="color:var(--muted)">Уровень изменён. Запусти Analyze снова.</span>';
+    if($('solverStepBox')) $('solverStepBox').textContent='Solver пока не запускался.';
+    if($('solverStepBtn')) $('solverStepBtn').disabled=true;
+  }
+  function rc(i){return [Math.floor(i/state.cols),i%state.cols]}
+  function labelCell(i){const [r,c]=rc(i);return `R${r+1}C${c+1}`}
+  function conflicts(a,b){
+    if(a===b)return true; const [ar,ac]=rc(a),[br,bc]=rc(b);
+    return ar===br || ac===bc || (Math.abs(ar-br)===1 && Math.abs(ac-bc)===1);
+  }
+  function solverRegionEntries(){
+    return [...regionGroups().entries()].map(([id,inds])=>[id,inds.filter(i=>!state.cells[i].blocked)]);
+  }
+  function validateAuthoredSolution(){
+    const groups=solverRegionEntries(), chosen=state.cells.map((c,i)=>c.solution?i:-1).filter(i=>i>=0);
+    const issues=[];
+    for(const [rid,inds] of groups){const n=inds.filter(i=>state.cells[i].solution).length;if(n!==1)issues.push(`Region ${rid}: ${n} capybaras`)}
+    for(let a=0;a<chosen.length;a++)for(let b=a+1;b<chosen.length;b++)if(conflicts(chosen[a],chosen[b]))issues.push(`${labelCell(chosen[a])} conflicts with ${labelCell(chosen[b])}`);
+    if(chosen.some(i=>state.cells[i].blocked))issues.push('Capybara on blocked cell');
+    return issues;
+  }
+  function bruteForceSolutions(limit=2){
+    const entries=solverRegionEntries();
+    if(entries.some(([,cells])=>cells.length===0))return {count:0,solutions:[]};
+    const sols=[], chosen=[];
+    function rec(remaining){
+      if(sols.length>=limit)return;
+      if(!remaining.length){sols.push([...chosen]);return;}
+      let bestIdx=-1,bestOpts=null;
+      for(let k=0;k<remaining.length;k++){
+        const [rid,cells]=remaining[k],opts=cells.filter(i=>chosen.every(j=>!conflicts(i,j)));
+        if(opts.length===0)return;
+        if(bestOpts===null||opts.length<bestOpts.length){bestOpts=opts;bestIdx=k;if(opts.length===1)break;}
+      }
+      const next=remaining[bestIdx], rest=remaining.slice(0,bestIdx).concat(remaining.slice(bestIdx+1));
+      for(const cell of bestOpts){chosen.push(cell);rec(rest);chosen.pop();if(sols.length>=limit)return;}
+    }
+    rec(entries); return {count:sols.length,solutions:sols};
+  }
+  function cloneCand(c){const out=new Map();for(const [k,v] of c)out.set(k,new Set(v));return out}
+  function firstContradiction(cand){for(const [rid,s] of cand)if(s.size===0)return `Region ${rid} has no candidates`;return null}
+  function removeCells(cand,rid,toRemove,tier,reason,steps,focus=[]){
+    const s=cand.get(rid), removed=[...toRemove].filter(x=>s.has(x)); if(!removed.length)return false;
+    removed.forEach(x=>s.delete(x)); steps&&steps.push({tier,reason,removed,focus:[...focus]}); return true;
+  }
+  function nextHumanDeduction(cand,maxTier=4,steps=null){
+    // L1: a solved region attacks row, column and diagonal neighbors.
+    for(const [rid,s] of cand){if(s.size!==1)continue;const cap=[...s][0];for(const [oid,os] of cand){if(oid===rid)continue;const rem=[...os].filter(x=>conflicts(cap,x));if(rem.length)return {apply:()=>removeCells(cand,oid,rem,1,`Region ${rid} is fixed at ${labelCell(cap)}; conflicting candidates in region ${oid} are impossible.`,steps,[cap]),tier:1};}}
+    if(maxTier<2)return null;
+    // L2: if every candidate of a region is in one row/column, that line is reserved.
+    for(const [rid,s] of cand){if(s.size<2)continue;const arr=[...s],rows=new Set(arr.map(i=>rc(i)[0])),cols=new Set(arr.map(i=>rc(i)[1]));
+      if(rows.size===1){const row=[...rows][0];for(const [oid,os] of cand){if(oid===rid)continue;const rem=[...os].filter(i=>rc(i)[0]===row);if(rem.length)return {apply:()=>removeCells(cand,oid,rem,2,`All candidates of region ${rid} lie in row ${row+1}; that row is reserved for this region.`,steps,arr),tier:2};}}
+      if(cols.size===1){const col=[...cols][0];for(const [oid,os] of cand){if(oid===rid)continue;const rem=[...os].filter(i=>rc(i)[1]===col);if(rem.length)return {apply:()=>removeCells(cand,oid,rem,2,`All candidates of region ${rid} lie in column ${col+1}; that column is reserved for this region.`,steps,arr),tier:2};}}
+    }
+    // L2: a candidate attacked by every possible placement of another mandatory region is impossible.
+    for(const [rid,s] of cand)for(const x of s)for(const [oid,os] of cand){if(oid===rid||os.size===0)continue;if([...os].every(y=>conflicts(x,y)))return {apply:()=>removeCells(cand,rid,[x],2,`${labelCell(x)} conflicts with every possible position of region ${oid}.`,steps,[...os]),tier:2};}
+    if(maxTier<3)return null;
+    const regions=[...cand.keys()];
+    function combos(arr,k,start=0,p=[]){const out=[];if(p.length===k)return [p.slice()];for(let i=start;i<=arr.length-(k-p.length);i++)out.push(...combos(arr,k,i+1,p.concat(arr[i])));return out}
+    // L3 pairs/triples; L4 quadruples: Hall subsets in rows/columns.
+    for(const n of [2,3,4]){
+      const tier=n<=3?3:4;if(tier>maxTier||regions.length<n)continue;
+      for(const subset of combos(regions,n)){
+        for(const axis of [0,1]){
+          const lines=new Set();subset.forEach(rid=>cand.get(rid).forEach(i=>lines.add(rc(i)[axis])));
+          if(lines.size!==n)continue;
+          for(const [oid,os] of cand){if(subset.includes(oid))continue;const rem=[...os].filter(i=>lines.has(rc(i)[axis]));if(rem.length){const word=axis===0?'rows':'columns';return {apply:()=>removeCells(cand,oid,rem,tier,`Regions ${subset.join(', ')} are confined to ${n} ${word} (${[...lines].map(x=>x+1).join(', ')}); those lines are reserved.`,steps,subset.flatMap(r=>[...cand.get(r)])),tier};}}
+        }
+      }
+    }
+    return null;
+  }
+  function propagate(cand,maxTier=4,steps=null,limit=1000){
+    let n=0;while(n++<limit){const bad=firstContradiction(cand);if(bad)return {contradiction:bad};const d=nextHumanDeduction(cand,maxTier,steps);if(!d)break;d.apply();}
+    const bad=firstContradiction(cand);return {contradiction:bad,solved:[...cand.values()].every(s=>s.size===1)};
+  }
+  function solveHuman(){
+    // IMPORTANT DESIGN RULE: no assumptions, no trial branches, no contradiction-by-guessing.
+    // A valid Capydoku level must be solved entirely by deterministic L1-L4 deductions.
+    const cand=new Map(solverRegionEntries().map(([rid,cells])=>[rid,new Set(cells)])),steps=[];
+    const p=propagate(cand,4,steps,2000);
+    const solved=!p.contradiction && [...cand.values()].every(s=>s.size===1);
+    const maxTier=Math.max(0,...steps.map(s=>s.tier));
+    return {solved,cand,steps,maxTier,contradiction:p.contradiction||null,stuck:!p.contradiction&&!solved};
+  }
+  function difficultyFrom(human,unique){
+    // Difficulty is only meaningful for valid, unique, no-guess levels.
+    // 9–10 is still deterministic: it means repeated/deep L4 use, never assumptions.
+    if(!unique||!human.solved)return null;
+    const counts=[0,0,0,0,0];human.steps.forEach(s=>counts[s.tier]++);
+    let score=1;
+    if(human.maxTier===1) score=1.15 + Math.min(1.15, counts[1]*0.07);
+    if(human.maxTier===2) score=3.0 + Math.min(1.8, counts[2]*0.22 + counts[1]*0.025);
+    if(human.maxTier===3) score=5.0 + Math.min(2.0, counts[3]*0.28 + counts[2]*0.07 + counts[1]*0.015);
+    if(human.maxTier===4) score=7.0 + Math.min(3.0, counts[4]*0.52 + counts[3]*0.10 + counts[2]*0.035 + Math.log2(human.steps.length+1)*0.08);
+    return Math.min(10,Math.round(score*10)/10);
+  }
+  function analyzeLevel(){
+    const structural=validations();
+    if(structural.some(v=>v.s==='bad')||state.cells.some(c=>c.region==null)){showToast('Сначала исправь структуру уровня');return;}
+    const brute=bruteForceSolutions(2),unique=brute.count===1,human=solveHuman(),difficulty=difficultyFrom(human,unique),auth=validateAuthoredSolution();
+    const counts={1:0,2:0,3:0,4:0};human.steps.forEach(s=>counts[s.tier]++);
+    const noGuessValid=unique&&human.solved&&!human.contradiction;
+    state.solverAnalysis={brute,human,steps:human.steps,difficulty,auth,noGuessValid};state.solverStep=-1;
+
+    let status;
+    if(brute.count===0) status=['bad','REJECT · No solution'];
+    else if(brute.count>1) status=['bad','REJECT · Multiple solutions'];
+    else if(!human.solved) status=['bad','REJECT · Requires guessing'];
+    else status=['good','VALID · No guessing'];
+
+    const logicState=human.solved?'✓ Deterministic':human.contradiction?'✕ Contradiction':'✕ Solver stuck';
+    $('solverResult').innerHTML=`<div class="solver-head"><b>Analysis</b><span class="solver-badge ${status[0]}">${status[1]}</span></div>
+      ${difficulty==null?'':`<div class="solver-score">${difficulty}<small> / 10 difficulty</small></div>`}
+      <div class="logic-row"><span>Unique solution</span><b>${unique?'Yes':'No'}</b></div>
+      <div class="logic-row"><span>No-guess solve</span><b>${human.solved?'Yes':'No'}</b></div>
+      <div class="logic-row"><span>Validation</span><b>${logicState}</b></div>
+      <div class="logic-row"><span>Branching / assumptions</span><b>0 / 0</b></div>
+      <div class="logic-row"><span>Deterministic steps</span><b>${human.steps.length}</b></div>
+      <div class="logic-row"><span>Highest allowed tier</span><b>${human.maxTier?'L'+human.maxTier:'—'}</b></div>
+      <div class="logic-row"><span>L1 / L2 / L3 / L4</span><b>${counts[1]} / ${counts[2]} / ${counts[3]} / ${counts[4]}</b></div>
+      <div class="logic-row"><span>Authored capybaras</span><b>${auth.length?'⚠ '+auth.length+' issue(s)':'✓ valid'}</b></div>`;
+    $('solverStepBtn').disabled=human.steps.length===0;
+    if(human.steps.length){
+      $('solverStepBox').textContent=`Ready: ${human.steps.length} deterministic deductions. Press Step.`;
+    }else if(human.solved){
+      $('solverStepBox').textContent='Solved immediately.';
+    }else if(unique){
+      $('solverStepBox').innerHTML='<b>REJECT: requires guessing.</b><br>The level has one mathematical solution, but the deterministic solver cannot make another valid move.';
+    }else{
+      $('solverStepBox').textContent=brute.count===0?'No solution.':'Multiple mathematical solutions.';
+    }
+    render(false);
+    showToast(noGuessValid?'✓ Valid no-guess level':unique?'Reject: requires guessing':brute.count===0?'Reject: no solution':'Reject: multiple solutions');
+  }
+  function advanceSolverStep(){
+    if(!state.solverAnalysis||!state.solverAnalysis.steps.length)return;
+    state.solverStep=(state.solverStep+1)%state.solverAnalysis.steps.length;const st=state.solverAnalysis.steps[state.solverStep];
+    $('solverStepBox').innerHTML=`<b>Step ${state.solverStep+1}/${state.solverAnalysis.steps.length} · L${st.tier}</b><br>${st.reason}`;render(false);
+  }
+
+  // ---------- Generator v1 ----------
+  function randInt(n){return Math.floor(Math.random()*n)}
+  function shuffle(a){a=[...a];for(let i=a.length-1;i>0;i--){const j=randInt(i+1);[a[i],a[j]]=[a[j],a[i]]}return a}
+  function generatorGridSize(n,target){
+    // Give the puzzle some empty rows/columns at higher difficulty; keep search manageable.
+    const extra=target>=7?2:1; return Math.min(11,Math.max(n+extra,5));
+  }
+  function makeSolutionSeeds(n,size){
+    // Choose n unique rows and columns, then reject diagonal-touching neighbors.
+    for(let tries=0;tries<160;tries++){
+      const rows=shuffle([...Array(size).keys()]).slice(0,n).sort((a,b)=>a-b);
+      const cols=shuffle([...Array(size).keys()]).slice(0,n);
+      const seeds=rows.map((r,k)=>r*size+cols[k]);
+      let ok=true;
+      for(let a=0;a<seeds.length&&ok;a++)for(let b=a+1;b<seeds.length;b++){
+        const ar=Math.floor(seeds[a]/size),ac=seeds[a]%size,br=Math.floor(seeds[b]/size),bc=seeds[b]%size;
+        if(ar===br||ac===bc||(Math.abs(ar-br)===1&&Math.abs(ac-bc)===1)){ok=false;break}
+      }
+      if(ok)return seeds;
+    }
+    return null;
+  }
+  function growRegions(n,size,seeds,target){
+    const total=size*size,owner=Array(total).fill(-1);
+    seeds.forEach((cell,rid)=>owner[cell]=rid);
+    let unassigned=total-n,guard=0;
+    while(unassigned>0&&guard++<total*30){
+      const candidates=[];
+      for(let i=0;i<total;i++)if(owner[i]<0){
+        const r=Math.floor(i/size),c=i%size,neighbors=[];
+        [[r-1,c],[r+1,c],[r,c-1],[r,c+1]].forEach(([rr,cc])=>{if(rr>=0&&rr<size&&cc>=0&&cc<size){const j=rr*size+cc;if(owner[j]>=0)neighbors.push(owner[j])}});
+        if(neighbors.length)candidates.push([i,neighbors]);
+      }
+      if(!candidates.length)return null;
+      // Higher target difficulty permits more irregular interlocking boundaries.
+      const [cell,neighbors]=candidates[randInt(candidates.length)];
+      const counts={};neighbors.forEach(x=>counts[x]=(counts[x]||0)+1);
+      let choices=[...new Set(neighbors)];
+      if(target<=3){
+        const max=Math.max(...choices.map(x=>counts[x]));choices=choices.filter(x=>counts[x]===max);
+      } else if(target>=7 && Math.random()<.45){
+        const min=Math.min(...choices.map(x=>counts[x]));choices=choices.filter(x=>counts[x]===min);
+      }
+      owner[cell]=choices[randInt(choices.length)];unassigned--;
+    }
+    return unassigned===0?owner:null;
+  }
+  function candidateToState(n,size,seeds,owner){
+    state.rows=size;state.cols=size;state.cells=Array.from({length:size*size},(_,i)=>({region:owner[i]+1,color:COLORS[owner[i]%COLORS.length],solution:seeds.includes(i),blocked:false}));
+    state.playMarks=Array(size*size).fill(0);
+  }
+  function analyzeCurrentSilently(){
+    const brute=bruteForceSolutions(2);if(brute.count!==1)return {valid:false,reason:brute.count===0?'no-solution':'multi'};
+    const human=solveHuman();if(!human.solved||human.contradiction)return {valid:false,reason:'guess'};
+    const difficulty=difficultyFrom(human,true);
+    return {valid:true,brute,human,difficulty};
+  }
+  async function generateLevel(){
+    if(state.generating)return;
+    const n=Math.max(3,Math.min(9,Number($('genCapys').value)||5));
+    const target=Math.max(1,Math.min(10,Number($('genDifficulty').value)||4));
+    const maxAttempts=Number($('genEffort').value)||350;
+    const size=generatorGridSize(n,target);
+    state.generating=true;$('generateBtn').disabled=true;$('generateBtn').textContent='Generating…';
+    $('genStatus').className='generator-status';$('genStatus').textContent=`Ищу no-guess уровень: ${n} капибар, target ${target}/10…`;$('genProgress').style.width='0%';
+    const original=snapshot();let best=null,validCount=0,rejectGuess=0,rejectMulti=0;
+    const batch=12;
+    for(let attempt=1;attempt<=maxAttempts;attempt++){
+      const seeds=makeSolutionSeeds(n,size);if(!seeds)continue;
+      const owner=growRegions(n,size,seeds,target);if(!owner)continue;
+      candidateToState(n,size,seeds,owner);
+      const a=analyzeCurrentSilently();
+      if(a.valid){
+        validCount++;const delta=Math.abs((a.difficulty??10)-target);
+        // Secondary preference: more deterministic steps gives a richer puzzle at equal score.
+        const score=delta*100-Math.min(30,a.human.steps.length)*.15;
+        if(!best||score<best.score)best={score,delta,difficulty:a.difficulty,cells:clone(state.cells),rows:size,cols:size,human:a.human,brute:a.brute};
+        if(delta<=0.35 && validCount>=2)break;
+      }else if(a.reason==='guess')rejectGuess++;else if(a.reason==='multi')rejectMulti++;
+      if(attempt%batch===0){
+        $('genProgress').style.width=Math.round(attempt/maxAttempts*100)+'%';
+        $('genStatus').textContent=`Проверено ${attempt}/${maxAttempts} · valid ${validCount} · guessing ${rejectGuess} · multiple ${rejectMulti}`;
+        await new Promise(r=>setTimeout(r,0));
+      }
+    }
+    if(best){
+      state.undo.push(original);if(state.undo.length>80)state.undo.shift();state.redo=[];
+      state.rows=best.rows;state.cols=best.cols;state.cells=best.cells;state.name=`Generated · ${n} capys · D${best.difficulty}`;state.playMarks=Array(state.rows*state.cols).fill(0);
+      $('levelName').value=state.name;$('rows').value=state.rows;$('cols').value=state.cols;clearSolver();render();
+      $('genStatus').className='generator-status good';
+      $('genStatus').innerHTML=`<b>✓ VALID · No guessing</b><br>Difficulty ${best.difficulty}/10 · target ${target} · ${best.human.steps.length} deterministic steps · max L${best.human.maxTier||1}.`;
+      $('genProgress').style.width='100%';
+      analyzeLevel();
+    }else{
+      restore(original);$('genStatus').className='generator-status bad';$('genStatus').innerHTML=`<b>Не найден подходящий валидный уровень.</b><br>Попробуй Deep search или соседнюю сложность.`;$('genProgress').style.width='0%';
+    }
+    state.generating=false;$('generateBtn').disabled=false;$('generateBtn').textContent='Generate valid level';
+  }
+
+  function exportObject(){return {schema:'capydoku-level-v1',name:$('levelName').value.trim()||'Untitled',rows:state.rows,cols:state.cols,cells:state.cells.map((c,i)=>({r:Math.floor(i/state.cols),c:i%state.cols,region:c.region,color:c.color,capybara:c.solution,blocked:c.blocked}))}}
+  function updateJsonBox(){$('jsonBox').value=JSON.stringify(exportObject(),null,2)}
+  function applyObject(obj){
+    if(!obj||!obj.rows||!obj.cols||!Array.isArray(obj.cells))throw new Error('Invalid level JSON');pushHistory();state.name=obj.name||'Imported level';state.rows=obj.rows;state.cols=obj.cols;state.cells=Array.from({length:state.rows*state.cols},blankCell);obj.cells.forEach((x,k)=>{const i=(Number.isInteger(x.r)&&Number.isInteger(x.c))?idx(x.r,x.c):k;if(i>=0&&i<state.cells.length)state.cells[i]={region:x.region??null,color:x.color||'#f7f3ed',solution:!!(x.capybara??x.solution),blocked:!!x.blocked}});state.playMarks=Array(state.rows*state.cols).fill(0);syncInputs();render();
+  }
+  function syncInputs(){$('rows').value=state.rows;$('cols').value=state.cols;$('levelName').value=state.name;$('regionId').value=state.regionId;buildPalette()}
+  function showToast(t){toast.textContent=t;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),1600)}
+
+  document.querySelectorAll('.tool').forEach(b=>b.onclick=()=>setTool(b.dataset.tool));
+  document.querySelectorAll('.mode-tab').forEach(b=>b.onclick=()=>{state.mode=b.dataset.mode;document.querySelectorAll('.mode-tab').forEach(x=>x.classList.toggle('active',x===b));$('centerPanel').classList.toggle('playtest',state.mode==='play');if(state.mode==='play')resetPlay();render()});
+  $('regionId').onchange=e=>state.regionId=Math.max(1,Number(e.target.value)||1);
+  $('newRegion').onclick=()=>{const ids=[...regionGroups().keys()];state.regionId=(ids.length?Math.max(...ids):0)+1;$('regionId').value=state.regionId;state.color=COLORS[(state.regionId-1)%COLORS.length];buildPalette()};
+  $('fillRegion').onclick=()=>{const i=state.lastCell??0;floodFill(i)};
+  $('resizeBtn').onclick=()=>{const r=Math.max(3,Math.min(12,Number($('rows').value)||6)),c=Math.max(3,Math.min(12,Number($('cols').value)||6));pushHistory();const old=clone(state.cells),or=state.rows,oc=state.cols;state.rows=r;state.cols=c;state.cells=Array.from({length:r*c},blankCell);for(let rr=0;rr<Math.min(or,r);rr++)for(let cc=0;cc<Math.min(oc,c);cc++)state.cells[idx(rr,cc)]=old[rr*oc+cc];state.playMarks=Array(r*c).fill(0);render()};
+  $('clearBtn').onclick=()=>{pushHistory();state.cells=Array.from({length:state.rows*state.cols},blankCell);render()};
+  $('undoBtn').onclick=undo;$('redoBtn').onclick=redo;
+  $('levelName').oninput=e=>{state.name=e.target.value;updateJsonBox()};
+  $('saveLocal').onclick=()=>{localStorage.setItem('capydoku_editor_level',JSON.stringify(exportObject()));showToast('Уровень сохранён в браузере')};
+  $('loadLocal').onclick=()=>{const s=localStorage.getItem('capydoku_editor_level');if(!s)return showToast('Нет сохранённого уровня');try{applyObject(JSON.parse(s));showToast('Уровень загружен')}catch(e){showToast('Ошибка загрузки')}};
+  $('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify(exportObject(),null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=(exportObject().name||'capydoku-level').replace(/[^a-z0-9_-]+/gi,'_')+'.json';a.click();URL.revokeObjectURL(a.href);showToast('JSON экспортирован')};
+  $('copyJson').onclick=async()=>{try{await navigator.clipboard.writeText($('jsonBox').value);showToast('JSON скопирован')}catch{showToast('Не удалось скопировать')}};
+  $('applyJson').onclick=()=>{try{applyObject(JSON.parse($('jsonBox').value));showToast('JSON применён')}catch(e){showToast('Ошибка JSON: '+e.message)}};
+  $('resetPlay').onclick=resetPlay;$('checkPlay').onclick=checkPlay;
+  $('analyzeBtn').onclick=analyzeLevel;$('solverStepBtn').onclick=advanceSolverStep;$('generateBtn').onclick=generateLevel;
+  document.addEventListener('keydown',e=>{if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName))return;if(e.ctrlKey||e.metaKey){if(e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo()}if(e.key.toLowerCase()==='y'){e.preventDefault();redo()}return}if(e.key==='1')setTool('region');if(e.key==='2')setTool('capy');if(e.key==='3')setTool('block');if(e.key==='4')setTool('erase')});
+
+  buildPalette(); initGrid(6,6);
+  // Seed a small example to make the editor understandable on first open.
+  const example=[
+    [1,1,2,2,2,3],[1,1,2,4,3,3],[5,5,4,4,3,6],[5,7,7,4,6,6],[5,7,8,8,8,6],[9,9,9,8,10,10]
+  ];
+  example.forEach((row,r)=>row.forEach((rid,c)=>{const cell=state.cells[idx(r,c)];cell.region=rid;cell.color=COLORS[(rid-1)%COLORS.length]}));
+  [1,10,20,27,34].forEach(i=>state.cells[i].solution=true);
+  state.undo=[];state.redo=[];render();
+})();
+</script>
+</body>
+</html>
