@@ -135,6 +135,12 @@ body{
 .cell.off.edge-u{border-radius:7px 7px 0 0}
 .cell.off.edge-d{border-radius:0 0 7px 7px}
 
+
+/* Reveal Stones: hide cell colors until Auto-Bloom clears them. */
+.cell.rock{cursor:default;background:#5f514a!important;border-radius:7px;overflow:hidden;box-shadow:inset 0 -3px 0 rgba(53,42,37,.18)}
+.cell.rock::before{content:"";position:absolute;left:8%;right:8%;bottom:7%;top:15%;border-radius:48% 52% 43% 46% / 55% 58% 42% 45%;background:radial-gradient(circle at 30% 27%,rgba(255,255,255,.23) 0 7%,transparent 8%),radial-gradient(circle at 72% 63%,rgba(44,48,45,.18) 0 8%,transparent 9%),linear-gradient(145deg,#a9aaa4 0%,#8f928d 48%,#747873 100%);box-shadow:inset 3px 3px 0 rgba(255,255,255,.13),inset -4px -5px 0 rgba(55,59,55,.12),0 2px 2px rgba(42,36,33,.20);z-index:3}
+.cell.rock::after{content:"";position:absolute;width:37%;height:34%;left:17%;bottom:8%;border-radius:55% 45% 48% 40%;background:linear-gradient(145deg,#9fa19c,#777b76);box-shadow:18px -2px 0 -2px #858984;z-index:4}
+
 .cell.flower,
 .cell.flower:disabled{
   cursor:default;
@@ -305,6 +311,22 @@ button.hint{
     {
       name:'УРОВЕНЬ 1',
       region:[
+        ['B','B','B','B','B','B','B','B'],
+        ['B','O','B','G','B','G','B','B'],
+        ['O','O','G','G','G','G','G','B'],
+        ['G','G','G','A','A','A','B','B'],
+        ['G','R','G','G','A','B','B','B'],
+        ['G','C','P','P','A','B','V','V'],
+        ['G','C','C','A','A','A','V','V'],
+        ['G','G','C','C','A','A','V','V']
+      ],
+      solution:[7,5,0,4,1,3,6,2],
+      rockRegions:['B','A','V'],
+      colors:{B:'#b47650',O:'#d9ad00',G:'#8bd17b',A:'#ff985c',R:'#cf6a88',C:'#40a9c1',P:'#eb8ad6',V:'#8576d3'}
+    },
+    {
+      name:'УРОВЕНЬ 2',
+      region:[
         ['C','O','G','O'],
         ['C','O','O','O'],
         ['C','C','P','O'],
@@ -314,7 +336,7 @@ button.hint{
       colors:{C:'#40a9c1',O:'#ff985c',G:'#86cf77',P:'#cf6a88'}
     },
     {
-      name:'УРОВЕНЬ 2',
+      name:'УРОВЕНЬ 3',
       region:[
         ['P','P','P','Y','O'],
         ['P','P','R','Y','O'],
@@ -326,7 +348,7 @@ button.hint{
       colors:{P:'#eb8ad6',Y:'#f3d47a',O:'#d9ad00',R:'#cf6a88',V:'#8576d3'}
     },
     {
-      name:'УРОВЕНЬ 3',
+      name:'УРОВЕНЬ 4',
       region:[
         ['R','R','R','R','P','P'],
         ['R','R','P','P','P','P'],
@@ -339,7 +361,7 @@ button.hint{
       colors:{R:'#cf6a88',P:'#eb8ad6',G:'#2f8c5a',V:'#8576d3',Y:'#d9ad00',L:'#f3d47a'}
     },
     {
-      name:'УРОВЕНЬ 4',
+      name:'УРОВЕНЬ 5',
       region:[
         ['O','B','B','B','B','B'],
         ['O','B','B','B','G','V'],
@@ -350,21 +372,6 @@ button.hint{
       ],
       solution:[0,5,2,4,1,3],
       colors:{O:'#d9ad00',B:'#b47650',G:'#8bd17b',V:'#8576d3',P:'#eb8ad6',R:'#cf6a88'}
-    },
-    {
-      name:'УРОВЕНЬ 5',
-      region:[
-        ['B','B','B','B','B','B','B','B'],
-        ['B','O','B','G','B','G','B','B'],
-        ['O','O','G','G','G','G','G','B'],
-        ['G','G','G','A','A','A','B','B'],
-        ['G','R','G','G','A','B','B','B'],
-        ['G','C','P','P','A','B','V','V'],
-        ['G','C','C','A','A','A','V','V'],
-        ['G','G','C','C','A','A','V','V']
-      ],
-      solution:[7,5,0,4,1,3,6,2],
-      colors:{B:'#b47650',O:'#d9ad00',G:'#8bd17b',A:'#ff985c',R:'#cf6a88',C:'#40a9c1',P:'#eb8ad6',V:'#8576d3'}
     },
     {
       name:'УРОВЕНЬ 6',
@@ -539,6 +546,7 @@ button.hint{
   let region=levels[0].region;
   let solution=levels[0].solution;
   let colors=levels[0].colors;
+  let rockRegions=new Set(levels[0].rockRegions||[]);
 
   let lives=3;
   let found=new Set();
@@ -557,6 +565,7 @@ button.hint{
     region=level.region;
     solution=level.solution;
     colors=level.colors;
+    rockRegions=new Set(level.rockRegions||[]);
 
     cancelPendingSingle();
     lives=3;
@@ -605,6 +614,11 @@ button.hint{
     if(found.has(k)) return false;
 
     return conflictsWithFound(r,c);
+  }
+
+  function isRockAt(r,c){
+    if(r<0 || r>=N || c<0 || c>=N) return false;
+    return rockRegions.has(region[r][c]) && !autoFilledAt(r,c) && !found.has(key(r,c));
   }
 
   function renderLives(){
@@ -658,6 +672,12 @@ button.hint{
           if(up) b.classList.add('join-u'); else b.classList.add('edge-u');
           if(down) b.classList.add('join-d'); else b.classList.add('edge-d');
 
+          b.disabled=true;
+
+        } else if(isRockAt(r,c)){
+          b.classList.add('rock');
+          b.style.background='#5f514a';
+          b.setAttribute('aria-label',`Камень: строка ${r+1}, столбец ${c+1}`);
           b.disabled=true;
 
         } else if(redMarks.has(k)){
@@ -780,7 +800,7 @@ button.hint{
       const c=solution[r];
       const k=key(r,c);
 
-      if(!found.has(k) && !autoFilledAt(r,c)){
+      if(!found.has(k) && !autoFilledAt(r,c) && !isRockAt(r,c)){
         const cell=board.children[r*N+c];
 
         if(cell){
