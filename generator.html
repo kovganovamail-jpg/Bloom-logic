@@ -119,7 +119,7 @@
     <div class="topbar">
       <div class="mode-tabs"><button class="mode-tab active" data-mode="author">Authoring</button><button class="mode-tab" data-mode="play">Playtest</button></div>
       <div class="row author-actions"><button class="btn" id="saveLocal">Save</button><button class="btn" id="loadLocal">Load</button><button class="btn primary" id="exportBtn">Export JSON</button></div>
-      <div class="play-actions"><button class="btn" id="resetPlay">Reset test</button><button class="btn primary" id="checkPlay">Check</button></div>
+      <div class="play-actions"><button class="btn" id="resetPlay">Reset test</button><button class="btn primary" id="checkPlay">Check</button><span class="hint" style="width:100%;margin-top:6px">Tap cell: 🦫 → ✕ → clear</span></div>
     </div>
     <div class="board-wrap"><div class="board" id="board"></div></div>
     <div class="statusbar">
@@ -216,13 +216,21 @@
     state.cells.forEach((c,i)=>{
       const el=document.createElement('div');const h=cellHTML(c,i);el.className='cell'+h.hidden;el.style.background=c.color||'#f7f3ed';el.innerHTML=h.content;el.dataset.i=i;
       if(state.solverAnalysis && state.solverStep>=0){const st=state.solverAnalysis.steps[state.solverStep];if(st){if((st.focus||[]).includes(i))el.classList.add('solver-focus');if((st.removed||[]).includes(i))el.classList.add('solver-removed');if((st.focus||[]).includes(i)|| (st.removed||[]).includes(i))el.innerHTML+=`<span class="solver-tag">L${st.tier}</span>`;}}
-      el.onmouseenter=()=>{$('coordStat').textContent=`Cell: ${Math.floor(i/state.cols)+1}, ${i%state.cols+1}`; if(state.isPainting && state.mode==='author' && state.tool==='region' && state.lastCell!==i){paint(i,false);state.lastCell=i}};
-      el.onmousedown=e=>{e.preventDefault();state.isPainting=true;state.lastCell=i;if(state.mode==='author')paint(i,true);else cyclePlay(i)};
+      const enterCell=()=>{$('coordStat').textContent=`Cell: ${Math.floor(i/state.cols)+1}, ${i%state.cols+1}`; if(state.isPainting && state.mode==='author' && state.tool==='region' && state.lastCell!==i){paint(i,false);state.lastCell=i}};
+      el.addEventListener('pointerenter', enterCell);
+      el.addEventListener('pointerdown', e=>{
+        if(e.pointerType==='mouse' && e.button!==0)return;
+        e.preventDefault();
+        state.isPainting=true;state.lastCell=i;
+        if(state.mode==='author')paint(i,true);else cyclePlay(i);
+      });
       board.appendChild(el);
     });
     updateStats(); if(updateJson) updateJsonBox();
   }
-  document.addEventListener('mouseup',()=>{state.isPainting=false;state.lastCell=null});
+  const endPointer=()=>{state.isPainting=false;state.lastCell=null};
+  document.addEventListener('pointerup',endPointer);
+  document.addEventListener('pointercancel',endPointer);
 
   function cyclePlay(i){if(state.mode!=='play'||state.cells[i].blocked)return;state.playMarks[i]=(state.playMarks[i]+1)%3;render(false)}
   function resetPlay(){state.playMarks=Array(state.rows*state.cols).fill(0);render(false)}
