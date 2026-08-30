@@ -87,7 +87,7 @@
 <body>
 <div class="app" id="app">
   <aside class="panel left">
-    <div class="brand"><div class="logo">🐾</div><div><h1>Capydoku Editor v4</h1><div class="sub">Generator v1 · No-Guess</div></div></div>
+    <div class="brand"><div class="logo">🐾</div><div><h1>Capydoku Editor v4</h1><div class="sub">Generator v2 · Constructive · No-Guess</div></div></div>
 
     <h2>Level</h2>
     <div class="field"><label>Название</label><input id="levelName" value="New Capydoku Level"></div>
@@ -402,48 +402,69 @@
   function randInt(n){return Math.floor(Math.random()*n)}
   function shuffle(a){a=[...a];for(let i=a.length-1;i>0;i--){const j=randInt(i+1);[a[i],a[j]]=[a[j],a[i]]}return a}
   function generatorGridSize(n,target){
-    // Give the puzzle some empty rows/columns at higher difficulty; keep search manageable.
-    const extra=target>=7?2:1; return Math.min(11,Math.max(n+extra,5));
+    // Constructive generator works best on n+1 square: enough breathing room,
+    // but not so much empty geometry that uniqueness becomes vanishingly rare.
+    return Math.min(10,Math.max(4,n+1));
   }
-  function makeSolutionSeeds(n,size){
-    // Choose n unique rows and columns, then reject diagonal-touching neighbors.
-    for(let tries=0;tries<160;tries++){
-      const rows=shuffle([...Array(size).keys()]).slice(0,n).sort((a,b)=>a-b);
+  function makeChainSeeds(n,size){
+    // Find an ordered set of mutually compatible capybaras such that the first
+    // n-1 capybaras attack every non-solution cell. This lets us construct a
+    // guaranteed deterministic L1 chain before we start difficulty mutations.
+    const total=size*size,all=[...Array(total).keys()];
+    for(let tries=0;tries<3500;tries++){
+      const rows=shuffle([...Array(size).keys()]).slice(0,n);
       const cols=shuffle([...Array(size).keys()]).slice(0,n);
-      const seeds=rows.map((r,k)=>r*size+cols[k]);
+      let seeds=rows.map((r,k)=>r*size+cols[k]);
       let ok=true;
-      for(let a=0;a<seeds.length&&ok;a++)for(let b=a+1;b<seeds.length;b++){
-        const ar=Math.floor(seeds[a]/size),ac=seeds[a]%size,br=Math.floor(seeds[b]/size),bc=seeds[b]%size;
-        if(ar===br||ac===bc||(Math.abs(ar-br)===1&&Math.abs(ac-bc)===1)){ok=false;break}
+      for(let a=0;a<n&&ok;a++)for(let b=a+1;b<n;b++)if(conflicts(seeds[a],seeds[b])){ok=false;break}
+      if(!ok)continue;
+      // Try several orders; order defines the deterministic reveal chain.
+      for(let q=0;q<Math.min(16,n*3);q++){
+        const order=shuffle(seeds),covered=new Set();
+        for(const s of order.slice(0,-1))for(const x of all)if(conflicts(s,x))covered.add(x);
+        const remain=all.filter(x=>!covered.has(x));
+        if(remain.length===1 && remain[0]===order[order.length-1])return order;
       }
-      if(ok)return seeds;
     }
     return null;
   }
-  function growRegions(n,size,seeds,target){
-    const total=size*size,owner=Array(total).fill(-1);
-    seeds.forEach((cell,rid)=>owner[cell]=rid);
-    let unassigned=total-n,guard=0;
-    while(unassigned>0&&guard++<total*30){
-      const candidates=[];
-      for(let i=0;i<total;i++)if(owner[i]<0){
-        const r=Math.floor(i/size),c=i%size,neighbors=[];
-        [[r-1,c],[r+1,c],[r,c-1],[r,c+1]].forEach(([rr,cc])=>{if(rr>=0&&rr<size&&cc>=0&&cc<size){const j=rr*size+cc;if(owner[j]>=0)neighbors.push(owner[j])}});
-        if(neighbors.length)candidates.push([i,neighbors]);
+  function growChainRegions(n,size,seeds){
+    // Region 0 is the anchor. Region k may only absorb cells already ruled out
+    // by an earlier capybara, so after regions 0..k-1 are fixed, region k has
+    // exactly one live candidate: its authored seed.
+    const total=size*size;
+    for(let restart=0;restart<180;restart++){
+      const owner=Array(total).fill(-1);seeds.forEach((cell,rid)=>owner[cell]=rid);
+      let unassigned=total-n,guard=0;
+      while(unassigned>0 && guard++<total*80){
+        const moves=[];
+        for(let i=0;i<total;i++)if(owner[i]<0){
+          const [r,c]=[Math.floor(i/size),i%size];
+          const near=[];[[r-1,c],[r+1,c],[r,c-1],[r,c+1]].forEach(([rr,cc])=>{
+            if(rr>=0&&rr<size&&cc>=0&&cc<size){const j=rr*size+cc;if(owner[j]>=0)near.push(owner[j]);}
+          });
+          for(const rid of [...new Set(near)]){
+            if(rid===0)continue; // keep a guaranteed starting single
+            let allowed=false;
+            for(let k=0;k<rid;k++)if(conflicts(i,seeds[k])){allowed=true;break}
+            if(allowed)moves.push([i,rid]);
+          }
+        }
+        if(!moves.length)break;
+        // Prefer filling constrained early regions sometimes so they remain connected.
+        moves.sort((a,b)=>a[1]-b[1]);
+        const pool=Math.random()<.55?moves.slice(0,Math.max(1,Math.ceil(moves.length*.45))):moves;
+        const [cell,rid]=pool[randInt(pool.length)];owner[cell]=rid;unassigned--;
       }
-      if(!candidates.length)return null;
-      // Higher target difficulty permits more irregular interlocking boundaries.
-      const [cell,neighbors]=candidates[randInt(candidates.length)];
-      const counts={};neighbors.forEach(x=>counts[x]=(counts[x]||0)+1);
-      let choices=[...new Set(neighbors)];
-      if(target<=3){
-        const max=Math.max(...choices.map(x=>counts[x]));choices=choices.filter(x=>counts[x]===max);
-      } else if(target>=7 && Math.random()<.45){
-        const min=Math.min(...choices.map(x=>counts[x]));choices=choices.filter(x=>counts[x]===min);
-      }
-      owner[cell]=choices[randInt(choices.length)];unassigned--;
+      if(unassigned===0 && [...Array(n).keys()].every(rid=>connectedOwner(owner,rid,size)))return owner;
     }
-    return unassigned===0?owner:null;
+    return null;
+  }
+  function connectedOwner(owner,rid,size){
+    const cells=[];for(let i=0;i<owner.length;i++)if(owner[i]===rid)cells.push(i);
+    if(!cells.length)return false;const set=new Set(cells),seen=new Set([cells[0]]),q=[cells[0]];
+    while(q.length){const i=q.pop(),r=Math.floor(i/size),c=i%size;[[r-1,c],[r+1,c],[r,c-1],[r,c+1]].forEach(([rr,cc])=>{if(rr>=0&&rr<size&&cc>=0&&cc<size){const j=rr*size+cc;if(set.has(j)&&!seen.has(j)){seen.add(j);q.push(j)}}})}
+    return seen.size===cells.length;
   }
   function candidateToState(n,size,seeds,owner){
     state.rows=size;state.cols=size;state.cells=Array.from({length:size*size},(_,i)=>({region:owner[i]+1,color:COLORS[owner[i]%COLORS.length],solution:seeds.includes(i),blocked:false}));
@@ -455,6 +476,24 @@
     const difficulty=difficultyFrom(human,true);
     return {valid:true,brute,human,difficulty};
   }
+  function ownerFromState(){return state.cells.map(c=>(c.region??1)-1)}
+  function tryBoundaryMutation(owner,n,size,seeds){
+    const boundary=[];
+    for(let i=0;i<owner.length;i++){
+      if(seeds.includes(i))continue;
+      const r=Math.floor(i/size),c=i%size,src=owner[i],targets=new Set();
+      [[r-1,c],[r+1,c],[r,c-1],[r,c+1]].forEach(([rr,cc])=>{if(rr>=0&&rr<size&&cc>=0&&cc<size){const o=owner[rr*size+cc];if(o!==src)targets.add(o)}});
+      for(const dst of targets)boundary.push([i,src,dst]);
+    }
+    if(!boundary.length)return null;
+    for(const [cell,src,dst] of shuffle(boundary).slice(0,28)){
+      const next=[...owner];next[cell]=dst;
+      if(!connectedOwner(next,src,size)||!connectedOwner(next,dst,size))continue;
+      if(seeds.some((s,rid)=>next[s]!==rid))continue;
+      return next;
+    }
+    return null;
+  }
   async function generateLevel(){
     if(state.generating)return;
     const n=Math.max(3,Math.min(9,Number($('genCapys').value)||5));
@@ -462,38 +501,52 @@
     const maxAttempts=Number($('genEffort').value)||350;
     const size=generatorGridSize(n,target);
     state.generating=true;$('generateBtn').disabled=true;$('generateBtn').textContent='Generating…';
-    $('genStatus').className='generator-status';$('genStatus').textContent=`Ищу no-guess уровень: ${n} капибар, target ${target}/10…`;$('genProgress').style.width='0%';
-    const original=snapshot();let best=null,validCount=0,rejectGuess=0,rejectMulti=0;
-    const batch=12;
-    for(let attempt=1;attempt<=maxAttempts;attempt++){
-      const seeds=makeSolutionSeeds(n,size);if(!seeds)continue;
-      const owner=growRegions(n,size,seeds,target);if(!owner)continue;
+    $('genStatus').className='generator-status';$('genStatus').textContent=`Строю гарантированный no-guess уровень: ${n} капибар…`;$('genProgress').style.width='0%';
+    const original=snapshot();let base=null;
+    // Phase 1: construct a guaranteed deterministic seed level.
+    for(let build=0;build<70&&!base;build++){
+      const seeds=makeChainSeeds(n,size);if(!seeds)continue;
+      const owner=growChainRegions(n,size,seeds);if(!owner)continue;
       candidateToState(n,size,seeds,owner);
       const a=analyzeCurrentSilently();
+      if(a.valid)base={seeds,owner,a};
+      if(build%6===0){$('genProgress').style.width=Math.min(20,Math.round(build/70*20))+'%';await new Promise(r=>setTimeout(r,0));}
+    }
+    if(!base){
+      restore(original);$('genStatus').className='generator-status bad';$('genStatus').innerHTML='<b>Не удалось построить базовый уровень.</b><br>Это уже ошибка генератора, а не параметров.';$('genProgress').style.width='0%';
+      state.generating=false;$('generateBtn').disabled=false;$('generateBtn').textContent='Generate valid level';return;
+    }
+    // Always keep a valid fallback. Phase 2 mutates boundaries and only accepts
+    // candidates that remain unique and fully deterministic.
+    let best={owner:[...base.owner],a:base.a,delta:Math.abs(base.a.difficulty-target)};
+    let current=[...base.owner],accepted=0,validTried=1;
+    const iterations=Math.max(80,maxAttempts);
+    for(let attempt=1;attempt<=iterations;attempt++){
+      const mutated=tryBoundaryMutation(current,n,size,base.seeds);if(!mutated)continue;
+      candidateToState(n,size,base.seeds,mutated);const a=analyzeCurrentSilently();
       if(a.valid){
-        validCount++;const delta=Math.abs((a.difficulty??10)-target);
-        // Secondary preference: more deterministic steps gives a richer puzzle at equal score.
-        const score=delta*100-Math.min(30,a.human.steps.length)*.15;
-        if(!best||score<best.score)best={score,delta,difficulty:a.difficulty,cells:clone(state.cells),rows:size,cols:size,human:a.human,brute:a.brute};
-        if(delta<=0.35 && validCount>=2)break;
-      }else if(a.reason==='guess')rejectGuess++;else if(a.reason==='multi')rejectMulti++;
-      if(attempt%batch===0){
-        $('genProgress').style.width=Math.round(attempt/maxAttempts*100)+'%';
-        $('genStatus').textContent=`Проверено ${attempt}/${maxAttempts} · valid ${validCount} · guessing ${rejectGuess} · multiple ${rejectMulti}`;
+        validTried++;const delta=Math.abs(a.difficulty-target);
+        // Prefer closeness to target; allow occasional sideways moves to escape local minima.
+        const currState=(()=>{candidateToState(n,size,base.seeds,current);return analyzeCurrentSilently()})();
+        const currDelta=currState.valid?Math.abs(currState.difficulty-target):99;
+        const sideways=delta<=currDelta+0.35 && Math.random()<0.18;
+        if(delta<currDelta||sideways){current=[...mutated];accepted++;}
+        if(delta<best.delta || (Math.abs(delta-best.delta)<1e-9 && a.human.steps.length>best.a.human.steps.length))best={owner:[...mutated],a,delta};
+        if(best.delta<=0.25 && attempt>25)break;
+      }
+      if(attempt%10===0){
+        $('genProgress').style.width=(20+Math.round(attempt/iterations*80))+'%';
+        $('genStatus').textContent=`Усложняю без угадывания: ${attempt}/${iterations} · valid ${validTried} · best D${best.a.difficulty}`;
         await new Promise(r=>setTimeout(r,0));
       }
     }
-    if(best){
-      state.undo.push(original);if(state.undo.length>80)state.undo.shift();state.redo=[];
-      state.rows=best.rows;state.cols=best.cols;state.cells=best.cells;state.name=`Generated · ${n} capys · D${best.difficulty}`;state.playMarks=Array(state.rows*state.cols).fill(0);
-      $('levelName').value=state.name;$('rows').value=state.rows;$('cols').value=state.cols;clearSolver();render();
-      $('genStatus').className='generator-status good';
-      $('genStatus').innerHTML=`<b>✓ VALID · No guessing</b><br>Difficulty ${best.difficulty}/10 · target ${target} · ${best.human.steps.length} deterministic steps · max L${best.human.maxTier||1}.`;
-      $('genProgress').style.width='100%';
-      analyzeLevel();
-    }else{
-      restore(original);$('genStatus').className='generator-status bad';$('genStatus').innerHTML=`<b>Не найден подходящий валидный уровень.</b><br>Попробуй Deep search или соседнюю сложность.`;$('genProgress').style.width='0%';
-    }
+    candidateToState(n,size,base.seeds,best.owner);
+    state.undo.push(original);if(state.undo.length>80)state.undo.shift();state.redo=[];
+    state.name=`Generated · ${n} capys · D${best.a.difficulty}`;$('levelName').value=state.name;$('rows').value=state.rows;$('cols').value=state.cols;clearSolver();render();
+    $('genStatus').className='generator-status good';
+    const exact=best.delta<=0.5;
+    $('genStatus').innerHTML=`<b>✓ VALID · No guessing</b><br>Получено D${best.a.difficulty}/10 · запрос D${target} · ${best.a.human.steps.length} deterministic steps · max L${best.a.human.maxTier||1}.${exact?'':'<br><span style="opacity:.8">Для этого числа капибар точная заданная сложность пока не нашлась — показан ближайший валидный уровень.</span>'}`;
+    $('genProgress').style.width='100%';analyzeLevel();
     state.generating=false;$('generateBtn').disabled=false;$('generateBtn').textContent='Generate valid level';
   }
 
