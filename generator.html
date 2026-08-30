@@ -139,6 +139,7 @@
       </div>
       <div class="field"><label>Search effort</label><select id="genEffort"><option value="120">Fast · 120 candidates</option><option value="350" selected>Normal · 350 candidates</option><option value="900">Deep · 900 candidates</option></select></div>
       <button class="btn primary" id="generateBtn" style="width:100%">Generate valid level</button>
+      <button class="btn" id="playGeneratedBtn" style="width:100%;margin-top:8px" disabled>▶ Play generated level</button>
       <div class="progress"><span id="genProgress"></span></div>
       <div class="generator-status" id="genStatus">Задай количество капибар и желаемую сложность.</div>
     </div>
@@ -548,6 +549,7 @@
     $('genStatus').innerHTML=`<b>✓ VALID · No guessing</b><br>Получено D${best.a.difficulty}/10 · запрос D${target} · ${best.a.human.steps.length} deterministic steps · max L${best.a.human.maxTier||1}.${exact?'':'<br><span style="opacity:.8">Для этого числа капибар точная заданная сложность пока не нашлась — показан ближайший валидный уровень.</span>'}`;
     $('genProgress').style.width='100%';analyzeLevel();
     state.generating=false;$('generateBtn').disabled=false;$('generateBtn').textContent='Generate valid level';
+    $('playGeneratedBtn').disabled=false;
   }
 
   function exportObject(){return {schema:'capydoku-level-v1',name:$('levelName').value.trim()||'Untitled',rows:state.rows,cols:state.cols,cells:state.cells.map((c,i)=>({r:Math.floor(i/state.cols),c:i%state.cols,region:c.region,color:c.color,capybara:c.solution,blocked:c.blocked}))}}
@@ -573,6 +575,16 @@
   $('copyJson').onclick=async()=>{try{await navigator.clipboard.writeText($('jsonBox').value);showToast('JSON скопирован')}catch{showToast('Не удалось скопировать')}};
   $('applyJson').onclick=()=>{try{applyObject(JSON.parse($('jsonBox').value));showToast('JSON применён')}catch(e){showToast('Ошибка JSON: '+e.message)}};
   $('resetPlay').onclick=resetPlay;$('checkPlay').onclick=checkPlay;
+  $('playGeneratedBtn').onclick=()=>{
+    const playTab=document.querySelector('.mode-tab[data-mode="play"]');
+    state.mode='play';
+    document.querySelectorAll('.mode-tab').forEach(x=>x.classList.toggle('active',x===playTab));
+    $('centerPanel').classList.add('playtest');
+    resetPlay();
+    render();
+    $('centerPanel').scrollIntoView({behavior:'smooth',block:'start'});
+    showToast('Playtest: решение скрыто');
+  };
   $('analyzeBtn').onclick=analyzeLevel;$('solverStepBtn').onclick=advanceSolverStep;$('generateBtn').onclick=generateLevel;
   document.addEventListener('keydown',e=>{if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName))return;if(e.ctrlKey||e.metaKey){if(e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo()}if(e.key.toLowerCase()==='y'){e.preventDefault();redo()}return}if(e.key==='1')setTool('region');if(e.key==='2')setTool('capy');if(e.key==='3')setTool('block');if(e.key==='4')setTool('erase')});
 
