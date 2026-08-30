@@ -42,7 +42,7 @@
   .mode-tabs{display:flex;background:#eee7de;border-radius:12px;padding:4px;gap:3px}.mode-tab{border:0;background:transparent;border-radius:9px;padding:8px 13px;font-weight:700;color:#746960}.mode-tab.active{background:#fff;color:var(--ink);box-shadow:0 2px 8px rgba(0,0,0,.08)}
   .board-wrap{flex:1;min-height:520px;display:grid;place-items:center;overflow:auto;padding:22px;border-radius:16px;background:radial-gradient(circle at 50% 35%,#fffdf8 0,#f0e9df 72%);border:1px solid rgba(99,78,60,.13)}
   .board{display:grid;gap:5px;user-select:none;touch-action:none;align-content:center;justify-content:center}
-  .cell{width:var(--cell);height:var(--cell);border-radius:12px;display:grid;place-items:center;position:relative;border:1px solid rgba(55,45,37,.15);box-shadow:inset 0 -3px 0 rgba(0,0,0,.045),0 2px 3px rgba(0,0,0,.05);transition:transform .08s,filter .08s;background:#fff}
+  .cell{width:var(--cell);height:var(--cell);touch-action:manipulation;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;border-radius:12px;display:grid;place-items:center;position:relative;border:1px solid rgba(55,45,37,.15);box-shadow:inset 0 -3px 0 rgba(0,0,0,.045),0 2px 3px rgba(0,0,0,.05);transition:transform .08s,filter .08s;background:#fff}
   .cell:hover{filter:brightness(1.03);transform:translateY(-1px)}
   .cell .coord{position:absolute;left:5px;top:3px;font-size:9px;color:rgba(40,30,25,.34);font-weight:700}
   .cell .entity{font-size:30px;filter:drop-shadow(0 2px 1px rgba(0,0,0,.12));z-index:2}
@@ -218,16 +218,37 @@
       if(state.solverAnalysis && state.solverStep>=0){const st=state.solverAnalysis.steps[state.solverStep];if(st){if((st.focus||[]).includes(i))el.classList.add('solver-focus');if((st.removed||[]).includes(i))el.classList.add('solver-removed');if((st.focus||[]).includes(i)|| (st.removed||[]).includes(i))el.innerHTML+=`<span class="solver-tag">L${st.tier}</span>`;}}
       const enterCell=()=>{$('coordStat').textContent=`Cell: ${Math.floor(i/state.cols)+1}, ${i%state.cols+1}`; if(state.isPainting && state.mode==='author' && state.tool==='region' && state.lastCell!==i){paint(i,false);state.lastCell=i}};
       el.addEventListener('pointerenter', enterCell);
+      // Mobile-safe input: iOS Safari can treat quick taps as page zoom.
+      // In Playtest we handle touchend directly and suppress the synthetic click.
+      let touchedAt=0;
+      el.addEventListener('touchend', e=>{
+        if(state.mode!=='play')return;
+        e.preventDefault(); e.stopPropagation(); touchedAt=Date.now();
+        cyclePlay(i);
+      }, {passive:false});
+      el.addEventListener('click', e=>{
+        if(state.mode!=='play')return;
+        e.preventDefault(); e.stopPropagation();
+        if(Date.now()-touchedAt<700)return;
+        cyclePlay(i);
+      });
       el.addEventListener('pointerdown', e=>{
+        if(state.mode==='play')return;
         if(e.pointerType==='mouse' && e.button!==0)return;
         e.preventDefault();
         state.isPainting=true;state.lastCell=i;
-        if(state.mode==='author')paint(i,true);else cyclePlay(i);
+        paint(i,true);
       });
+      el.addEventListener('dblclick', e=>{e.preventDefault();e.stopPropagation();});
       board.appendChild(el);
     });
     updateStats(); if(updateJson) updateJsonBox();
   }
+
+  // Prevent Safari zoom gestures inside the game board only.
+  board.addEventListener('gesturestart',e=>e.preventDefault(),{passive:false});
+  board.addEventListener('dblclick',e=>e.preventDefault());
+
   const endPointer=()=>{state.isPainting=false;state.lastCell=null};
   document.addEventListener('pointerup',endPointer);
   document.addEventListener('pointercancel',endPointer);
